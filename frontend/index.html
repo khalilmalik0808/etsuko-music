@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Etsuko Studio</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" type="image/png" href="assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+</head>
+<body class="figma-dark">
+  <!-- Aesthetic Minimalist Splash Loading Screen -->
+  <div class="splash-screen" id="app-splash-screen">
+    <div class="splash-content">
+      <div class="splash-logo-container">
+        <img src="assets/logo.png" alt="Etsuko" class="splash-logo-img">
+      </div>
+      <div class="splash-brand-title">ETSUKO</div>
+      <div class="splash-badge">NEURAL AUDIO ENGINE • V68</div>
+
+      <div class="splash-progress-track">
+        <div class="splash-progress-fill" id="splash-progress-fill"></div>
+      </div>
+      <div class="splash-status-text" id="splash-status-text">INITIALIZING AUDIO MATRIX...</div>
+    </div>
+  </div>
+
+  <div class="ambient-glow"></div>
+  <div class="app-layout">
+    <!-- Left Navigation Sidebar -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-logo">
+          <img src="assets/logo.png" alt="Etsuko" class="brand-avatar-img">
+        </div>
+        <div class="brand-text">
+          <span class="brand-name">Etsuko</span>
+          <span class="brand-edition">STUDIO</span>
+        </div>
+      </div>
+
+      <!-- Segmented Nav -->
+      <nav class="nav-menu">
+        <button class="nav-item active" data-view="home">
+          <div class="nav-icon-box">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+          </div>
+          <span>Discover</span>
+        </button>
+        <button class="nav-item" data-view="search">
+          <div class="nav-icon-box">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          </div>
+          <span>Search</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-library">
+        <div class="library-header">
+          <div class="library-title">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            <span>Your Crates</span>
+          </div>
+          <button class="btn-figma-icon" id="btn-new-playlist" title="New Playlist">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          </button>
+        </div>
+
+        <div class="library-items" id="library-playlists">
+          <div class="library-card active" data-playlist="liked">
+            <div class="liked-heart-box">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="white">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+              </svg>
+            </div>
+            <div class="library-card-info">
+              <div class="library-card-title">Liked Tracks</div>
+              <div class="library-card-sub" id="liked-count-badge">0 tracks saved</div>
+            </div>
+          </div>
+          <!-- Custom Playlists injected dynamically -->
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Bar -->
+      <header class="top-bar">
+        <div class="top-bar-left">
+          <div class="search-box-container" id="top-search-container">
+            <div class="search-input-wrapper">
+              <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="global-search-input" placeholder="Search any track, artist, album, remix..." autocomplete="off" spellcheck="false">
+              <kbd class="search-shortcut-badge">Enter</kbd>
+              <button class="search-clear-btn" id="search-clear-btn" style="display:none;">&times;</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="top-bar-right">
+          <button class="btn-profile-badge" id="btn-profile-badge" title="Customize Profile">
+            <img id="header-user-avatar" src="assets/default_user.png" alt="Profile" class="header-avatar" onerror="this.src='assets/default_user.png'">
+            <span id="header-user-name" style="display:none;"></span>
+          </button>
+          <div class="silent-chaos-pill" id="topbar-wave-pill" title="Silent Chaos">
+            <span class="chaos-dot"></span>
+            <span class="chaos-label">SILENT CHAOS</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Dynamic Views Container -->
+      <div class="content-scrollable" id="content-area">
+        <!-- Home View -->
+        <section id="view-home" class="page-view active">
+          <!-- Cyberpunk Dynamic Hero Station -->
+          <div class="hero-banner-cyber" id="hero-banner-cyber">
+            <div class="hero-content-col">
+              <div class="hero-live-badge">
+                <span class="live-dot pulse"></span>
+                <span>NEURAL TRANSMISSION • UNCAPPED</span>
+              </div>
+              <h1 class="hero-heading-cyber" id="greeting-text">AFTER-HOURS FREQUENCY</h1>
+              <p class="hero-subtext-cyber" id="greeting-subtext">Direct uncapped stream • 320kbps pure neural audio matrix</p>
+              
+              <div class="hero-actions-row">
+                <button class="btn-hero-cta primary" id="btn-quick-flow" title="Play Top 1 Global Banger Instantly">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                  <span>Quick Flow</span>
+                </button>
+                <button class="btn-hero-cta secondary" id="btn-surprise-me" title="Play a Random Heavy Banger">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>
+                  <span>Surprise Me</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="hero-hologram-col">
+              <div class="hero-avatar-aesthetic">
+                <img src="assets/logo.png" alt="Etsuko" class="hero-avatar-img">
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Vibe Access Grid -->
+          <div class="quick-vibes-section">
+            <div class="quick-vibes-grid" id="quick-vibes-grid">
+              <!-- Injected dynamically via app.js -->
+            </div>
+          </div>
+
+          <div class="shelf-section">
+            <div class="shelf-header">
+              <div>
+                <h2 class="shelf-title">Trending Global Hits</h2>
+                <span class="shelf-subtitle">Real-time heavy rotation around the world</span>
+              </div>
+            </div>
+            <div class="cards-carousel" id="trending-cards">
+              <!-- Injected dynamically -->
+            </div>
+          </div>
+
+          <!-- Top Artists Spotlight Section -->
+          <div class="shelf-section">
+            <div class="shelf-header">
+              <div>
+                <h2 class="shelf-title">Featured Artists</h2>
+                <span class="shelf-subtitle">Heavy rotation icons around the globe</span>
+              </div>
+            </div>
+            <div class="artists-carousel" id="artists-cards">
+              <!-- Injected dynamically via app.js -->
+            </div>
+          </div>
+
+          <div class="shelf-section">
+            <div class="shelf-header">
+              <div>
+                <h2 class="shelf-title">Curated Frequencies</h2>
+                <span class="shelf-subtitle">Genre collections tailored for deep focus & vibes</span>
+              </div>
+            </div>
+            <div class="genre-grid" id="genre-cards">
+              <!-- Injected dynamically -->
+            </div>
+          </div>
+        </section>
+
+        <!-- Search Results View -->
+        <section id="view-search" class="page-view">
+          <div class="search-hero">
+            <h1 class="search-hero-title">Search & Explore</h1>
+            <p class="search-hero-desc">Stream any song, artist, album, remix, or live performance on Earth.</p>
+            
+            <div class="search-hero-input-wrapper">
+              <svg class="search-hero-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="search-main-input" placeholder="Type a track title, artist, or album..." autocomplete="off">
+              <button class="search-main-clear-btn" id="search-main-clear-btn" style="display:none;">&times;</button>
+            </div>
+
+            <!-- Quick Search Tags -->
+            <div class="quick-tags-container">
+              <span class="quick-tags-label">Popular Searches:</span>
+              <div class="quick-tags-list" id="quick-tags-list">
+                <button class="quick-tag-btn" data-query="Top 50 Global Hits">Top Hits</button>
+                <button class="quick-tag-btn" data-query="The Weeknd">The Weeknd</button>
+                <button class="quick-tag-btn" data-query="Eminem">Eminem</button>
+                <button class="quick-tag-btn" data-query="Billie Eilish">Billie Eilish</button>
+                <button class="quick-tag-btn" data-query="Drake">Drake</button>
+                <button class="quick-tag-btn" data-query="Sabrina Carpenter">Sabrina Carpenter</button>
+                <button class="quick-tag-btn" data-query="Anime Openings Hits">Anime OST</button>
+                <button class="quick-tag-btn" data-query="K-Pop Top Hits">K-Pop</button>
+                <button class="quick-tag-btn" data-query="Lofi Chill Beats">Lo-Fi</button>
+                <button class="quick-tag-btn" data-query="Rock Classics">Rock Classics</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="search-filters-bar">
+            <button class="filter-pill active" data-filter="songs">
+              <span>Tracks</span>
+            </button>
+            <button class="filter-pill" data-filter="albums">
+              <span>Albums</span>
+            </button>
+            <button class="filter-pill" data-filter="artists">
+              <span>Artists</span>
+            </button>
+          </div>
+
+          <div id="search-loading" class="spinner-container" style="display: none;">
+            <div class="figma-spinner"></div>
+            <span class="spinner-text">Searching global music catalog...</span>
+          </div>
+
+          <div id="search-results-container" class="search-results-layout">
+            <!-- Left: Top Result -->
+            <div class="top-result-col" id="top-result-col" style="display:none;">
+              <h3 class="section-title">Spotlight Result</h3>
+              <div class="top-result-card" id="top-result-card"></div>
+            </div>
+
+            <!-- Right: Track List -->
+            <div class="songs-result-col" id="songs-result-col">
+              <h3 class="section-title" id="search-results-title">Tracks</h3>
+              <div class="tracks-list" id="search-tracks-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Playlist / Album Detail View -->
+        <section id="view-playlist" class="page-view">
+          <div class="playlist-header">
+            <div class="playlist-cover-large" id="playlist-header-cover">
+              <svg viewBox="0 0 24 24" width="60" height="60" fill="white">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+              </svg>
+            </div>
+            <div class="playlist-details">
+              <span class="playlist-type" id="playlist-header-type">COLLECTION</span>
+              <h1 class="playlist-title" id="playlist-header-title">Liked Tracks</h1>
+              <p class="playlist-desc" id="playlist-header-desc">Your personal music vault</p>
+              <div class="playlist-meta" id="playlist-header-meta">0 tracks</div>
+            </div>
+          </div>
+
+          <div class="playlist-actions-bar">
+            <button class="btn-figma-primary" id="btn-playlist-playall">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                <polygon points="6 3 20 12 6 21 6 3"></polygon>
+              </svg>
+              <span>Play All</span>
+            </button>
+            <button class="btn-figma-danger" id="btn-delete-playlist" style="display:none;" title="Delete this Playlist">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              <span>Delete Crate</span>
+            </button>
+          </div>
+
+          <div class="tracks-table-header">
+            <span class="col-num">#</span>
+            <span class="col-title">Track</span>
+            <span class="col-album">Album</span>
+            <span class="col-actions">Actions</span>
+            <span class="col-dur">Time</span>
+          </div>
+          <div class="tracks-list" id="playlist-tracks-list"></div>
+        </section>
+
+        <!-- Lyrics Overlay View -->
+        <section id="view-lyrics" class="page-view lyrics-view">
+          <div class="lyrics-backdrop" id="lyrics-backdrop"></div>
+          <div class="lyrics-container">
+            <div class="lyrics-header">
+              <div class="lyrics-badge">SYNCHRONIZED VOCALS</div>
+              <h2 id="lyrics-track-title">Track Title</h2>
+              <p id="lyrics-track-artist">Artist Name</p>
+            </div>
+            <div class="lyrics-content" id="lyrics-lines">
+              <p class="lyrics-loading">Fetching studio lyrics...</p>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Right Queue Drawer -->
+      <aside class="queue-drawer" id="queue-drawer">
+        <div class="queue-header">
+          <div class="queue-title-box">
+            <h3>Live Queue</h3>
+            <span class="queue-badge" id="queue-count-badge">0 tracks</span>
+          </div>
+          <button class="btn-figma-icon" id="btn-close-queue">&times;</button>
+        </div>
+        <div class="queue-section">
+          <h4>Now Streaming</h4>
+          <div id="queue-now-playing"></div>
+        </div>
+        <div class="queue-section">
+          <div class="queue-section-header">
+            <h4>Next In Line</h4>
+            <button class="btn-figma-text" id="btn-clear-queue">Clear</button>
+          </div>
+          <div id="queue-list" class="queue-track-list"></div>
+        </div>
+        <div class="queue-section">
+          <h4>Auto-Frequency (Radio)</h4>
+          <div id="queue-autoplay-list" class="queue-track-list"></div>
+        </div>
+      </aside>
+    </main>
+
+    <!-- Floating Island Audio Player -->
+    <footer class="player-bar-floating">
+      <!-- Left: Active Track Meta -->
+      <div class="player-left">
+        <div class="track-cover-box" id="player-cover-box">
+          <img id="player-cover" src="assets/logo.png" alt="Cover" onerror="this.src='assets/default_cover.png'">
+          <div class="cover-overlay-spinner" id="cover-spinner" style="display:none;"></div>
+        </div>
+        <div class="track-meta">
+          <div class="track-title" id="player-title">Ready to Stream</div>
+          <div class="track-artist" id="player-artist">Etsuko Studio</div>
+        </div>
+        <button class="btn-figma-like" id="player-like-btn" title="Add to Favorites">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+          </svg>
+        </button>
+        <button class="btn-figma-icon-small" id="player-add-playlist-btn" title="Add to Crate">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        </button>
+      </div>
+
+      <!-- Center: Playback Controls & Timeline -->
+      <div class="player-center">
+        <div class="player-controls">
+          <button class="figma-control-btn" id="btn-shuffle" title="Shuffle: Off">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line></svg>
+            <span class="control-dot" id="shuffle-dot"></span>
+          </button>
+          <button class="figma-control-btn" id="btn-prev" title="Previous">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2.5"></line></svg>
+          </button>
+          <button class="btn-figma-play" id="btn-play-pause" title="Play / Pause">
+            <svg id="icon-play" viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><polygon points="7 4 19 12 7 20 7 4"></polygon></svg>
+            <svg id="icon-pause" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" style="display:none;"><rect x="6" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg>
+          </button>
+          <button class="figma-control-btn" id="btn-next" title="Next">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2.5"></line></svg>
+          </button>
+          <button class="figma-control-btn" id="btn-repeat" title="Repeat: Off">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+            <span class="repeat-badge" id="repeat-badge" style="display:none;">1</span>
+            <span class="control-dot" id="repeat-dot"></span>
+          </button>
+        </div>
+
+        <div class="player-timeline">
+          <span class="time-label" id="current-time">0:00</span>
+          <div class="scrubber-bar" id="timeline-scrubber">
+            <div class="scrubber-buffered" id="timeline-buffered"></div>
+            <div class="scrubber-progress" id="timeline-progress"></div>
+            <div class="scrubber-handle" id="timeline-handle"></div>
+          </div>
+          <span class="time-label" id="total-duration">0:00</span>
+        </div>
+      </div>
+
+      <!-- Right: Spectrum, Lyrics, Queue, Volume -->
+      <div class="player-right">
+        <canvas id="audio-visualizer" width="80" height="26" title="Live Frequency Analyzer"></canvas>
+        <button class="figma-control-btn" id="btn-lyrics-toggle" title="Lyrics Overlay">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+        </button>
+        <button class="figma-control-btn" id="btn-queue-toggle" title="Queue Drawer">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+        </button>
+        <div class="volume-container">
+          <button class="figma-control-btn" id="btn-volume-icon" title="Mute">
+            <svg id="icon-vol-high" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+            <svg id="icon-vol-mute" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="display:none;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
+          </button>
+          <div class="volume-scrubber" id="volume-scrubber">
+            <div class="volume-progress" id="volume-progress"></div>
+            <div class="volume-handle" id="volume-handle"></div>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Create Playlist Modal -->
+  <div class="modal-backdrop" id="modal-new-playlist" style="display:none;">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Create New Crate</h3>
+        <span class="modal-badge">PLAYLIST</span>
+      </div>
+      <input type="text" id="input-playlist-name" placeholder="Crate name (e.g. Night Drive, Gym Hype)..." maxlength="40">
+      <textarea id="input-playlist-desc" placeholder="Add a description or vibe tags..." rows="3"></textarea>
+      <div class="modal-actions">
+        <button class="btn-figma-secondary" id="btn-modal-cancel">Cancel</button>
+        <button class="btn-figma-primary" id="btn-modal-save">Create Crate</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add to Playlist Modal -->
+  <div class="modal-backdrop" id="modal-add-to-playlist" style="display:none;">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Add Track to Crate</h3>
+        <span class="modal-badge" id="modal-add-track-title">Track</span>
+      </div>
+      <p style="font-size:13px; color:var(--text-sub);">Select which playlist to store this track in:</p>
+      <div class="playlist-select-list" id="modal-playlist-select-list"></div>
+      <div class="modal-actions">
+        <button class="btn-figma-secondary" id="btn-modal-add-cancel">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile Customization Modal -->
+  <div class="modal-backdrop" id="modal-profile" style="display:none;">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Custom Profile</h3>
+        <span class="modal-badge">IDENTITY</span>
+      </div>
+      <div class="profile-preview-box">
+        <img id="profile-modal-avatar-preview" src="assets/default_user.png" alt="Avatar" class="profile-preview-img" onerror="this.src='assets/default_user.png'">
+        <div class="profile-avatar-actions">
+          <input type="file" id="input-profile-file" accept="image/*" style="display:none;">
+          <button type="button" class="btn-figma-secondary btn-upload-avatar" id="btn-choose-pfp-file">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            <span>Choose from Files</span>
+          </button>
+          <button type="button" class="btn-figma-text" id="btn-reset-pfp-default" style="color:var(--text-muted); font-size:12px; margin-top:4px;">
+            Reset to Default
+          </button>
+        </div>
+      </div>
+      <label class="modal-label">Display Name</label>
+      <input type="text" id="input-profile-name" placeholder="Enter display name (optional)..." maxlength="30">
+      <label class="modal-label">Status / Bio</label>
+      <input type="text" id="input-profile-bio" placeholder="What's on your mind? (optional)..." maxlength="80">
+      <input type="hidden" id="input-profile-avatar">
+      <div class="modal-actions">
+        <button class="btn-figma-secondary" id="btn-modal-profile-cancel">Cancel</button>
+        <button class="btn-figma-primary" id="btn-modal-profile-save">Save Profile</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="app-toast" id="app-toast" style="display:none;"></div>
+
+  <audio id="audio-engine" preload="auto" crossorigin="anonymous" referrerpolicy="no-referrer"></audio>
+  <script src="js/player.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
