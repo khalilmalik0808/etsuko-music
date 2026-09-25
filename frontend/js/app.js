@@ -532,9 +532,9 @@ class EtsukoApp {
 
   async installUpdate() {
     if (!this.latestUpdateData || !this.latestUpdateData.downloadUrl) return;
-    if (this.btnUpdateNowText) this.btnUpdateNowText.textContent = 'Downloading...';
+    if (this.btnUpdateNowText) this.btnUpdateNowText.textContent = 'Downloading (24 MB)...';
     if (this.btnUpdateNow) this.btnUpdateNow.disabled = true;
-    if (window.showToast) window.showToast('Downloading update installer in background...');
+    if (window.showToast) window.showToast('Downloading update installer (~24MB)... Please wait a few seconds.');
 
     try {
       const res = await fetch('/api/update/install', {
@@ -544,10 +544,10 @@ class EtsukoApp {
       });
       const data = await res.json();
       if (data.success) {
-        if (this.btnUpdateNowText) this.btnUpdateNowText.textContent = 'Restarting...';
-        if (window.showToast) window.showToast('Launching update installer...');
+        if (this.btnUpdateNowText) this.btnUpdateNowText.textContent = 'Installing...';
+        if (window.showToast) window.showToast('Installing update... Etsuko will restart in a moment.');
       } else {
-        if (window.showToast) window.showToast('Update download failed');
+        if (window.showToast) window.showToast('Update download failed: ' + (data.error || 'Unknown error'));
         if (this.btnUpdateNowText) this.btnUpdateNowText.textContent = 'Update Now';
         if (this.btnUpdateNow) this.btnUpdateNow.disabled = false;
       }

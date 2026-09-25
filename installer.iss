@@ -2,7 +2,7 @@
 ; Creates a professional Windows Setup Installer without requiring admin rights
 
 #define MyAppName "Etsuko"
-#define MyAppVersion "69.0"
+#define MyAppVersion "69.1"
 #define MyAppPublisher "Etsuko Neural Audio"
 #define MyAppExeName "etsuko.exe"
 
@@ -22,6 +22,8 @@ Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayIcon={app}\{#MyAppExeName}
+CloseApplications=yes
+RestartApplications=no
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -39,3 +41,21 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilen
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+
+[Code]
+function InitializeSetup(): Boolean;
+var
+  ResultCode: Integer;
+begin
+  // Terminate any running etsuko.exe instances before copying files so DeleteFile never fails with Error 5
+  Exec('taskkill.exe', '/F /IM etsuko.exe /T', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Result := True;
+end;
+
+function InitializeUninstall(): Boolean;
+var
+  ResultCode: Integer;
+begin
+  Exec('taskkill.exe', '/F /IM etsuko.exe /T', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Result := True;
+end;

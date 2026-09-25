@@ -515,7 +515,9 @@ def perform_update():
 
         def launch_and_exit():
             time.sleep(1.0)
-            subprocess.Popen([dest_exe, '/SILENT'])
+            subprocess.Popen([dest_exe, '/SILENT', '/CLOSEAPPLICATIONS', '/FORCECLOSEAPPLICATIONS'])
+            time.sleep(0.5)
+            subprocess.run(['taskkill', '/F', '/IM', 'etsuko.exe', '/T'], capture_output=True)
             os._exit(0)
 
         threading.Thread(target=launch_and_exit, daemon=True).start()
