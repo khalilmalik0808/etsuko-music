@@ -1,7 +1,6 @@
 {
-  "version": "69.0",
-  "name": "Etsuko v69.0",
-  "download_url": "https://github.com/khalilmalik0808/etsuko-music/releases/latest/download/Etsuko_Setup.exe",
-  "portable_url": "https://github.com/khalilmalik0808/etsuko-music/releases/latest/download/etsuko.exe",
-  "changelog": "Initial public release of Etsuko v69 Cyberpunk Neural Audio Studio."
+  "version": "69.1",
+  "changelog": "Auto-update engine, SVG icons, smooth splash, genre cards, single EXE build",
+  "download_url": "https://github.com/khalilmalik0808/etsuko-music/releases/download/v69.1/Etsuko_Setup.exe",
+  "download_url_standalone": "https://github.com/khalilmalik0808/etsuko-music/releases/download/v69.1/etsuko.exe"
 }
