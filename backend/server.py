@@ -27,6 +27,9 @@ app = Bottle()
 STREAM_CACHE = {}
 CACHE_EXPIRY = 3600  # 1 hour
 
+APP_VERSION = "69.0"
+UPDATE_BEACON_URL = "https://raw.githubusercontent.com/khalilmalik0808/etsuko-music/main/version.json"
+
 try:
     ytmusic = YTMusic()
 except Exception as e:
@@ -456,6 +459,69 @@ def handle_history():
         db.record_history(track)
         return {"success": True}
     return {"history": db.get_history()}
+
+@app.route('/api/version', method=['GET'])
+def get_version():
+    return {"version": APP_VERSION}
+
+@app.route('/api/update/check', method=['GET'])
+def check_for_updates():
+    try:
+        req = urllib.request.Request(UPDATE_BEACON_URL, headers={'User-Agent': f'Etsuko-App/{APP_VERSION}'})
+        with urllib.request.urlopen(req, timeout=4) as r:
+            remote = json.loads(r.read().decode())
+            remote_ver = str(remote.get('version', '')).strip()
+
+            def parse_ver(v):
+                parts = []
+                for x in v.replace('v', '').split('.'):
+                    clean = ''.join(c for c in x if c.isdigit())
+                    if clean:
+                        parts.append(int(clean))
+                return parts
+
+            cur_parts = parse_ver(APP_VERSION)
+            rem_parts = parse_ver(remote_ver)
+            is_newer = rem_parts > cur_parts
+
+            return {
+                "updateAvailable": is_newer,
+                "currentVersion": APP_VERSION,
+                "latestVersion": remote_ver,
+                "downloadUrl": remote.get('download_url'),
+                "portableUrl": remote.get('portable_url'),
+                "changelog": remote.get('changelog', '')
+            }
+    except Exception as e:
+        return {"updateAvailable": False, "currentVersion": APP_VERSION, "error": str(e)}
+
+@app.route('/api/update/install', method=['POST', 'OPTIONS'])
+def perform_update():
+    if request.method == 'OPTIONS':
+        return {}
+    try:
+        data = request.json or {}
+        download_url = data.get('downloadUrl')
+        if not download_url:
+            return HTTPResponse(status=400, body=json.dumps({"error": "No download URL provided"}))
+
+        import tempfile, subprocess
+        temp_dir = tempfile.gettempdir()
+        dest_exe = os.path.join(temp_dir, "Etsuko_Update_Setup.exe")
+
+        req = urllib.request.Request(download_url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=120) as response, open(dest_exe, 'wb') as out_file:
+            out_file.write(response.read())
+
+        def launch_and_exit():
+            time.sleep(1.0)
+            subprocess.Popen([dest_exe, '/SILENT'])
+            os._exit(0)
+
+        threading.Thread(target=launch_and_exit, daemon=True).start()
+        return {"success": True, "message": "Installer launched, updating..."}
+    except Exception as e:
+        return HTTPResponse(status=500, body=json.dumps({"error": str(e)}))
 
 
 # Serve static frontend files

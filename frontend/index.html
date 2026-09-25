@@ -115,6 +115,22 @@
         </div>
       </header>
 
+      <!-- Cyber Auto-Update Bar (shown when update is detected) -->
+      <div class="update-notification-bar" id="update-notification-bar" style="display: none;">
+        <div class="update-bar-left">
+          <span class="update-pulsing-dot"></span>
+          <span class="update-title" id="update-banner-title">UPDATE DETECTED // v69.1</span>
+          <span class="update-desc" id="update-banner-desc">A new version of Etsuko is ready to install.</span>
+        </div>
+        <div class="update-bar-right">
+          <button class="btn-update-now" id="btn-update-now">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <span id="btn-update-now-text">Update Now</span>
+          </button>
+          <button class="btn-update-dismiss" id="btn-update-dismiss" title="Dismiss">&times;</button>
+        </div>
+      </div>
+
       <!-- Dynamic Views Container -->
       <div class="content-scrollable" id="content-area">
         <!-- Home View -->
@@ -476,6 +492,10 @@
       <label class="modal-label">Status / Bio</label>
       <input type="text" id="input-profile-bio" placeholder="What's on your mind? (optional)..." maxlength="80">
       <input type="hidden" id="input-profile-avatar">
+      <div class="profile-version-bar">
+        <span class="version-tag">Etsuko Studio v69.0</span>
+        <button type="button" class="btn-check-update" id="btn-check-update-manual">Check for Updates</button>
+      </div>
       <div class="modal-actions">
         <button class="btn-figma-secondary" id="btn-modal-profile-cancel">Cancel</button>
         <button class="btn-figma-primary" id="btn-modal-profile-save">Save Profile</button>

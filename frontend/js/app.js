@@ -26,7 +26,9 @@ class EtsukoApp {
 
     this.initDOM();
     this.bindEvents();
-    this.startAppWithSplash();
+    this.startAppWithSplash().then(() => {
+      setTimeout(() => this.checkForUpdates(false), 2500);
+    });
   }
 
   initDOM() {
@@ -43,6 +45,16 @@ class EtsukoApp {
     this.greetingSubtext = document.getElementById('greeting-subtext');
     this.btnQuickFlow = document.getElementById('btn-quick-flow');
     this.btnSurpriseMe = document.getElementById('btn-surprise-me');
+
+    // Auto-Update Elements
+    this.updateBanner = document.getElementById('update-notification-bar');
+    this.updateTitle = document.getElementById('update-banner-title');
+    this.updateDesc = document.getElementById('update-banner-desc');
+    this.btnUpdateNow = document.getElementById('btn-update-now');
+    this.btnUpdateNowText = document.getElementById('btn-update-now-text');
+    this.btnUpdateDismiss = document.getElementById('btn-update-dismiss');
+    this.btnCheckUpdateManual = document.getElementById('btn-check-update-manual');
+    this.latestUpdateData = null;
     this.quickVibesGrid = document.getElementById('quick-vibes-grid');
     this.artistsCards = document.getElementById('artists-cards');
     this.topbarWavePill = document.getElementById('topbar-wave-pill');
@@ -479,6 +491,71 @@ class EtsukoApp {
         this.updateSyncedLyricsProgress(e.detail.currentTime);
       }
     });
+
+    // Auto-Update Events
+    if (this.btnUpdateDismiss) {
+      this.btnUpdateDismiss.addEventListener('click', () => {
+        if (this.updateBanner) this.updateBanner.style.display = 'none';
+      });
+    }
+
+    if (this.btnUpdateNow) {
+      this.btnUpdateNow.addEventListener('click', () => this.installUpdate());
+    }
+
+    if (this.btnCheckUpdateManual) {
+      this.btnCheckUpdateManual.addEventListener('click', () => this.checkForUpdates(true));
+    }
+  }
+
+  // --- Auto-Update Engine ---
+  async checkForUpdates(manual = false) {
+    try {
+      if (manual && window.showToast) window.showToast('Checking for updates...');
+      const res = await fetch('/api/update/check');
+      const data = await res.json();
+      if (data.updateAvailable) {
+        this.latestUpdateData = data;
+        if (this.updateBanner) {
+          if (this.updateTitle) this.updateTitle.textContent = `UPDATE DETECTED // v${data.latestVersion}`;
+          if (this.updateDesc) this.updateDesc.textContent = data.changelog || `Version ${data.latestVersion} is ready to install!`;
+          this.updateBanner.style.display = 'flex';
+        }
+        if (manual && window.showToast) window.showToast(`Update v${data.latestVersion} available!`);
+      } else if (manual) {
+        if (window.showToast) window.showToast("You're running the latest version! (v69.0)");
+      }
+    } catch (e) {
+      if (manual && window.showToast) window.showToast('Could not reach update server');
+    }
+  }
+
+  async installUpdate() {
+    if (!this.latestUpdateData || !this.latestUpdateData.downloadUrl) return;
+    if (this.btnUpdateNowText) this.btnUpdateNowText.textContent = 'Downloading...';
+    if (this.btnUpdateNow) this.btnUpdateNow.disabled = true;
+    if (window.showToast) window.showToast('Downloading update installer in background...');
+
+    try {
+      const res = await fetch('/api/update/install', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ downloadUrl: this.latestUpdateData.downloadUrl })
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (this.btnUpdateNowText) this.btnUpdateNowText.textContent = 'Restarting...';
+        if (window.showToast) window.showToast('Launching update installer...');
+      } else {
+        if (window.showToast) window.showToast('Update download failed');
+        if (this.btnUpdateNowText) this.btnUpdateNowText.textContent = 'Update Now';
+        if (this.btnUpdateNow) this.btnUpdateNow.disabled = false;
+      }
+    } catch (e) {
+      if (window.showToast) window.showToast('Update failed: ' + e.message);
+      if (this.btnUpdateNowText) this.btnUpdateNowText.textContent = 'Update Now';
+      if (this.btnUpdateNow) this.btnUpdateNow.disabled = false;
+    }
   }
 
   // --- Profile Management ---
