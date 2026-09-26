@@ -1,6 +1,6 @@
 {
-  "version": "69.1",
+  "version": "69.2",
   "changelog": "Default Tracks search, zero search flickering with AbortController, reliable in-app and browser update options",
-  "download_url": "https://github.com/khalilmalik0808/etsuko-music/releases/download/v69.1/Etsuko_Setup.exe",
-  "download_url_standalone": "https://github.com/khalilmalik0808/etsuko-music/releases/download/v69.1/etsuko.exe"
+  "download_url": "https://github.com/khalilmalik0808/etsuko-music/releases/download/v69.2/Etsuko_Setup.exe",
+  "download_url_standalone": "https://github.com/khalilmalik0808/etsuko-music/releases/download/v69.2/etsuko.exe"
 }

@@ -28,7 +28,7 @@ app = Bottle()
 CACHE_EXPIRY = 1800  # 30 mins
 STREAM_CACHE = {}
 
-APP_VERSION = "69.1"
+APP_VERSION = "69.2"
 UPDATE_BEACON_URL = "https://raw.githubusercontent.com/khalilmalik0808/etsuko-music/main/version.json"
 
 try:

@@ -560,6 +560,17 @@ class EtsukoApp {
       if (manual && window.showToast) window.showToast('Checking for updates...');
       const res = await fetch('/api/update/check');
       const data = await res.json();
+
+      const verLabel = document.getElementById('profile-version-label');
+      if (verLabel && data.currentVersion) {
+        verLabel.textContent = `Etsuko Studio v${data.currentVersion}`;
+      }
+
+      if (data.error) {
+        if (manual && window.showToast) window.showToast(`Update check note: ${data.error}`);
+        return;
+      }
+
       if (data.updateAvailable) {
         this.latestUpdateData = data;
         if (this.updateBanner) {
@@ -569,7 +580,7 @@ class EtsukoApp {
         }
         if (manual && window.showToast) window.showToast(`Update v${data.latestVersion} available!`);
       } else if (manual) {
-        if (window.showToast) window.showToast("You're running the latest version! (v69.0)");
+        if (window.showToast) window.showToast(`You're running the latest version! (v${data.currentVersion || '69.2'})`);
       }
     } catch (e) {
       if (manual && window.showToast) window.showToast('Could not reach update server');
