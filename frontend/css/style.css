@@ -553,19 +553,20 @@ body.figma-dark {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Cyberpunk Dynamic Hero Station */
+/* Aesthetic Ambient Hero Station */
 .hero-banner-cyber {
-  background: radial-gradient(circle at 80% 50%, rgba(139, 92, 246, 0.22) 0%, rgba(0, 240, 255, 0.09) 50%, rgba(14, 14, 22, 0.95) 100%);
-  border: 1px solid rgba(0, 240, 255, 0.2);
+  background: radial-gradient(ellipse at 85% 50%, rgba(139, 92, 246, 0.16) 0%, rgba(59, 130, 246, 0.08) 45%, rgba(13, 13, 20, 0.98) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-lg);
-  padding: 34px 40px;
+  padding: 38px 44px;
   margin-bottom: 28px;
   position: relative;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
 }
 
 .hero-banner-cyber::before {
@@ -574,8 +575,8 @@ body.figma-dark {
   top: 0;
   left: 0;
   width: 100%;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, #00f0ff, #8b5cf6, transparent);
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), rgba(139, 92, 246, 0.35), transparent);
 }
 
 .hero-content-col {
@@ -588,80 +589,90 @@ body.figma-dark {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 2px;
-  color: var(--accent-cyan);
-  font-family: 'JetBrains Mono', monospace;
-  background: rgba(0, 240, 255, 0.1);
-  padding: 4px 10px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 5px 12px;
   border-radius: var(--radius-full);
-  border: 1px solid rgba(0, 240, 255, 0.25);
-  margin-bottom: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  margin-bottom: 16px;
+  backdrop-filter: blur(10px);
+}
+
+.hero-live-badge .live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+  box-shadow: 0 0 8px var(--accent-cyan);
 }
 
 .hero-heading-cyber {
-  font-size: 38px;
-  font-weight: 900;
-  letter-spacing: -0.5px;
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.6px;
   color: #fff;
   margin-bottom: 8px;
-  text-transform: uppercase;
-  background: linear-gradient(135deg, #ffffff 40%, #00f0ff 100%);
+  text-transform: none;
+  background: linear-gradient(180deg, #ffffff 40%, rgba(255, 255, 255, 0.8) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .hero-subtext-cyber {
-  font-size: 14px;
-  color: var(--text-sub);
-  margin-bottom: 22px;
-  letter-spacing: 0.2px;
+  font-size: 14.5px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 24px;
+  letter-spacing: 0.1px;
+  line-height: 1.5;
 }
 
 .hero-actions-row {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
 }
 
 .btn-hero-cta {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  padding: 11px 24px;
+  padding: 11px 22px;
   border-radius: var(--radius-full);
   font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.5px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
   cursor: pointer;
-  transition: var(--transition);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   border: none;
 }
 
 .btn-hero-cta.primary {
-  background: linear-gradient(135deg, #00f0ff 0%, #8b5cf6 100%);
-  color: #050508;
-  box-shadow: 0 4px 20px rgba(0, 240, 255, 0.35);
+  background: #ffffff;
+  color: #0b0b10;
+  box-shadow: 0 4px 18px rgba(255, 255, 255, 0.2);
 }
 
 .btn-hero-cta.primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(0, 240, 255, 0.55);
+  background: #f0f0f5;
+  box-shadow: 0 8px 24px rgba(255, 255, 255, 0.35);
 }
 
 .btn-hero-cta.secondary {
-  background: rgba(255, 255, 255, 0.06);
-  color: #fff;
-  border: 1px solid var(--border-hover);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(12px);
 }
 
 .btn-hero-cta.secondary:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: var(--accent-cyan);
+  background: rgba(255, 255, 255, 0.13);
+  border-color: rgba(255, 255, 255, 0.25);
   transform: translateY(-2px);
-  color: var(--accent-cyan);
+  color: #fff;
 }
 
 .hero-hologram-col {
@@ -669,11 +680,11 @@ body.figma-dark {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding-right: 20px;
+  padding-right: 15px;
   z-index: 2;
 }
 
-/* Clean Aesthetic Static Hero Avatar (Zero distracting animation) */
+/* Clean Aesthetic Hero Avatar */
 .hero-avatar-aesthetic {
   position: relative;
   width: 124px;
@@ -683,16 +694,16 @@ body.figma-dark {
   justify-content: center;
   border-radius: 50%;
   padding: 4px;
-  background: radial-gradient(circle, rgba(0, 240, 255, 0.15) 0%, rgba(139, 92, 246, 0.08) 70%, transparent 100%);
-  border: 1.5px solid rgba(0, 240, 255, 0.35);
-  box-shadow: 0 0 25px rgba(0, 240, 255, 0.2), 0 0 50px rgba(139, 92, 246, 0.1);
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.25) 0%, rgba(255, 255, 255, 0.03) 70%, transparent 100%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), 0 0 35px rgba(139, 92, 246, 0.18);
   transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
 }
 
 .hero-avatar-aesthetic:hover {
   transform: scale(1.04);
-  border-color: var(--accent-cyan);
-  box-shadow: 0 0 35px rgba(0, 240, 255, 0.4), 0 0 65px rgba(139, 92, 246, 0.25);
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 12px 38px rgba(0, 0, 0, 0.7), 0 0 45px rgba(139, 92, 246, 0.3);
 }
 
 .hero-avatar-img {
@@ -700,8 +711,7 @@ body.figma-dark {
   height: 112px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid rgba(255, 255, 255, 0.18);
-  box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.5);
+  border: 1.5px solid rgba(255, 255, 255, 0.16);
   display: block;
 }
 
@@ -717,63 +727,46 @@ body.figma-dark {
 }
 
 .vibe-tile {
-  background: rgba(18, 18, 28, 0.75);
-  backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
   display: flex;
   align-items: center;
   overflow: hidden;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
-  height: 68px;
+  height: 66px;
   padding: 0 10px;
 }
 
-.vibe-tile::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 3px;
-  height: 100%;
-  background: var(--tile-accent, var(--accent-cyan));
-  opacity: 0.7;
-  transition: opacity 0.25s ease, width 0.25s ease;
-}
-
 .vibe-tile:hover {
-  background: rgba(28, 28, 44, 0.85);
-  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
   transform: translateY(-2px);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5), 0 0 18px var(--tile-glow, rgba(0, 240, 255, 0.2));
-}
-
-.vibe-tile:hover::before {
-  opacity: 1;
-  width: 4px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4), 0 0 16px var(--tile-glow, rgba(255, 255, 255, 0.08));
 }
 
 .vibe-tile-icon {
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   position: relative;
-  transition: all 0.25s ease;
-  margin-left: 4px;
+  transition: all 0.22s ease;
+  margin-left: 2px;
 }
 
 .vibe-tile-icon svg {
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .vibe-tile:hover .vibe-tile-icon svg {
-  transform: scale(1.12);
+  transform: scale(1.1);
 }
 
 .vibe-tile-info {
@@ -787,7 +780,7 @@ body.figma-dark {
 
 .vibe-tile-title {
   font-size: 13.5px;
-  font-weight: 700;
+  font-weight: 600;
   color: #fff;
   white-space: nowrap;
   overflow: hidden;
@@ -796,16 +789,16 @@ body.figma-dark {
 }
 
 .vibe-tile-sub {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--text-muted);
-  letter-spacing: 0.8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.45);
+  letter-spacing: 0.3px;
   text-transform: uppercase;
   margin-top: 2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: inherit;
 }
 
 .vibe-tile-play {
@@ -1936,17 +1929,25 @@ body.figma-dark {
 .volume-handle {
   position: absolute;
   top: 50%;
-  right: -4px;
+  right: -5px;
   transform: translateY(-50%);
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: #fff;
   opacity: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
 .volume-scrubber:hover .volume-handle {
   opacity: 1;
+  transform: translateY(-50%) scale(1.15);
+}
+
+.volume-scrubber:hover .volume-progress {
+  background: var(--accent-cyan);
 }
 
 /* Queue Drawer */

@@ -211,18 +211,18 @@ class EtsukoApp {
   updateGreeting() {
     const hour = new Date().getHours();
     if (this.greetingText) {
-      if (hour >= 0 && hour < 5) {
-        this.greetingText.textContent = 'AFTER-HOURS FREQUENCY';
-        if (this.greetingSubtext) this.greetingSubtext.textContent = 'Tokyo midnight transmission • Direct 320kbps neural audio';
-      } else if (hour >= 5 && hour < 12) {
-        this.greetingText.textContent = 'NEURAL MATRIX ONLINE';
-        if (this.greetingSubtext) this.greetingSubtext.textContent = 'Frequency calibrated • Zero interruptions, uncapped audio flow';
-      } else if (hour >= 12 && hour < 17) {
-        this.greetingText.textContent = 'HIGH-VOLTAGE ROTATION';
-        if (this.greetingSubtext) this.greetingSubtext.textContent = 'Daylight transmission • Worldwide heavy rotation & hot charts';
+      if (hour >= 5 && hour < 12) {
+        this.greetingText.textContent = 'Good morning';
+        if (this.greetingSubtext) this.greetingSubtext.textContent = 'Start your day with clean soundscapes and global charts.';
+      } else if (hour >= 12 && hour < 18) {
+        this.greetingText.textContent = 'Good afternoon';
+        if (this.greetingSubtext) this.greetingSubtext.textContent = 'Uninterrupted music flow tailored for focus and energy.';
+      } else if (hour >= 18 && hour < 22) {
+        this.greetingText.textContent = 'Good evening';
+        if (this.greetingSubtext) this.greetingSubtext.textContent = 'Wind down with curated favorites and chill selections.';
       } else {
-        this.greetingText.textContent = 'NEON NIGHTS // DOWNTOWN';
-        if (this.greetingSubtext) this.greetingSubtext.textContent = 'Night drive frequencies • Uncapped lossless streaming';
+        this.greetingText.textContent = 'After Hours';
+        if (this.greetingSubtext) this.greetingSubtext.textContent = 'Late night chill, synthwave drives, and deep basslines.';
       }
     }
   }
@@ -746,8 +746,8 @@ class EtsukoApp {
     const vibes = [
       {
         id: 'phonk',
-        title: 'Heavy Phonk & Bass',
-        tag: 'DRIFT & 808s',
+        title: 'Phonk & Drift',
+        tag: 'NIGHT BASS',
         query: 'Drift Phonk Heavy Bass',
         bg: '#8b5cf6',
         svg: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>`
@@ -755,38 +755,38 @@ class EtsukoApp {
       {
         id: 'night',
         title: 'Late Night Drive',
-        tag: 'SYNTH NIGHT DRIVE',
+        tag: 'SYNTH & RETRO',
         query: 'Late Night Synthwave Drive',
         bg: '#00f0ff',
         svg: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.5 3c-.1.2-.1.4-.1.6v4.5c0 .6.4 1 1 1h2"></path><circle cx="7" cy="17" r="2"></circle><path d="M9 17h6"></path><circle cx="17" cy="17" r="2"></circle></svg>`
       },
       {
         id: 'anime',
-        title: 'Anime & Lo-Fi Chill',
-        tag: 'LO-FI & STUDY',
+        title: 'Lo-Fi Beats',
+        tag: 'CHILL & STUDY',
         query: 'Anime Lo-Fi Chill Beats',
         bg: '#ec4899',
         svg: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="3"></rect><circle cx="8" cy="12" r="3"></circle><circle cx="16" cy="12" r="3"></circle><path d="M8 12h8"></path><path d="M6 18h12"></path></svg>`
       },
       {
         id: 'top50',
-        title: 'Top 50 Worldwide',
-        tag: 'GLOBAL ROTATION',
+        title: "Today's Top 50",
+        tag: 'GLOBAL HITS',
         query: 'Top 50 Global Hits',
         bg: '#f59e0b',
         svg: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z"></path><path d="M5 20h14"></path></svg>`
       },
       {
         id: 'coding',
-        title: 'Midnight Coding',
-        tag: 'FOCUS TERMINAL',
+        title: 'Deep Focus',
+        tag: 'FLOW & AMBIENT',
         query: 'Coding Synthwave Cyberpunk Beats',
         bg: '#10b981',
         svg: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>`
       },
       {
         id: 'rock',
-        title: 'Hard Rock & Metal',
+        title: 'Rock & Metal',
         tag: 'HEAVY RIFFS',
         query: 'Hard Rock Metal Classics',
         bg: '#ef4444',
