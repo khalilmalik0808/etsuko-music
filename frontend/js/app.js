@@ -611,10 +611,14 @@ class EtsukoApp {
   async installUpdate() {
     if (!this.latestUpdateData || !this.latestUpdateData.downloadUrl) return;
 
+    // Close any other open modals so update progress has total focus
+    const modalProfile = document.getElementById('modal-profile');
+    if (modalProfile) modalProfile.style.display = 'none';
+
     // Open Progress Modal
     if (this.modalUpdateProgress) {
       this.modalUpdateProgress.style.display = 'flex';
-      if (this.updateModalTitle) this.updateModalTitle.textContent = `DOWNLOADING UPDATE // v${this.latestUpdateData.latestVersion || '69.2'}`;
+      if (this.updateModalTitle) this.updateModalTitle.textContent = `DOWNLOADING UPDATE // v${this.latestUpdateData.latestVersion || '69.4'}`;
       if (this.updateModalStatus) this.updateModalStatus.textContent = 'Connecting to download cluster...';
       if (this.updateProgressFill) this.updateProgressFill.style.width = '0%';
       if (this.updateStatPercent) this.updateStatPercent.textContent = '0.0%';

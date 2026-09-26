@@ -8,7 +8,19 @@ import threading
 import socket
 import requests
 
-# Force IPv4 in requests and urllib3 across the entire process to prevent 21-second IPv6 handshake timeouts on Windows
+# Force IPv4 across all socket operations in python (urllib, requests, socket.create_connection)
+# to eliminate 21-second Windows IPv6 handshake timeouts on networks without IPv6 routes
+orig_getaddrinfo = socket.getaddrinfo
+def getaddrinfo_ipv4(host, port, family=0, type=0, proto=0, flags=0):
+    try:
+        res = orig_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
+        if res:
+            return res
+    except Exception:
+        pass
+    return orig_getaddrinfo(host, port, family, type, proto, flags)
+socket.getaddrinfo = getaddrinfo_ipv4
+
 try:
     import urllib3.util.connection
     urllib3.util.connection.allowed_gai_family = lambda: socket.AF_INET
@@ -36,7 +48,7 @@ app = Bottle()
 CACHE_EXPIRY = 1800  # 30 mins
 STREAM_CACHE = {}
 
-APP_VERSION = "69.3"
+APP_VERSION = "69.4"
 UPDATE_BEACON_URL = "https://raw.githubusercontent.com/khalilmalik0808/etsuko-music/main/version.json"
 
 try:
@@ -569,31 +581,31 @@ def get_version():
 @app.route('/api/update/check', method=['GET'])
 def check_for_updates():
     try:
-        req = urllib.request.Request(UPDATE_BEACON_URL, headers={'User-Agent': f'Etsuko-App/{APP_VERSION}'})
-        with urllib.request.urlopen(req, timeout=4) as r:
-            remote = json.loads(r.read().decode())
-            remote_ver = str(remote.get('version', '')).strip()
+        r = requests.get(UPDATE_BEACON_URL, headers={'User-Agent': f'Etsuko-App/{APP_VERSION}'}, timeout=8)
+        r.raise_for_status()
+        remote = r.json()
+        remote_ver = str(remote.get('version', '')).strip()
 
-            def parse_ver(v):
-                parts = []
-                for x in v.replace('v', '').split('.'):
-                    clean = ''.join(c for c in x if c.isdigit())
-                    if clean:
-                        parts.append(int(clean))
-                return parts
+        def parse_ver(v):
+            parts = []
+            for x in v.replace('v', '').split('.'):
+                clean = ''.join(c for c in x if c.isdigit())
+                if clean:
+                    parts.append(int(clean))
+            return parts
 
-            cur_parts = parse_ver(APP_VERSION)
-            rem_parts = parse_ver(remote_ver)
-            is_newer = rem_parts > cur_parts
+        cur_parts = parse_ver(APP_VERSION)
+        rem_parts = parse_ver(remote_ver)
+        is_newer = rem_parts > cur_parts
 
-            return {
-                "updateAvailable": is_newer,
-                "currentVersion": APP_VERSION,
-                "latestVersion": remote_ver,
-                "downloadUrl": remote.get('download_url'),
-                "portableUrl": remote.get('portable_url'),
-                "changelog": remote.get('changelog', '')
-            }
+        return {
+            "updateAvailable": is_newer,
+            "currentVersion": APP_VERSION,
+            "latestVersion": remote_ver,
+            "downloadUrl": remote.get('download_url'),
+            "portableUrl": remote.get('download_url_standalone') or remote.get('portable_url'),
+            "changelog": remote.get('changelog', '')
+        }
     except Exception as e:
         return {"updateAvailable": False, "currentVersion": APP_VERSION, "error": str(e)}
 
@@ -649,38 +661,44 @@ def perform_update():
                 temp_dir = tempfile.gettempdir()
                 dest_exe = os.path.join(temp_dir, "Etsuko_Update_Setup.exe")
                 
-                req = urllib.request.Request(download_url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
-                with urllib.request.urlopen(req, timeout=60) as response, open(dest_exe, 'wb') as out_file:
-                    total_bytes = int(response.headers.get('Content-Length', 0))
-                    UPDATE_STATE["total_bytes"] = total_bytes
-                    downloaded = 0
-                    start_time = time.time()
-                    last_calc_time = start_time
-                    last_calc_bytes = 0
+                # High-speed streaming download using requests with IPv4 connection
+                r = requests.get(
+                    download_url,
+                    stream=True,
+                    timeout=20,
+                    headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+                )
+                r.raise_for_status()
 
-                    chunk_size = 64 * 1024
-                    while True:
+                total_bytes = int(r.headers.get('content-length') or 0)
+                UPDATE_STATE["total_bytes"] = total_bytes
+                downloaded = 0
+                start_time = time.time()
+                last_calc_time = start_time
+                last_calc_bytes = 0
+
+                chunk_size = 128 * 1024
+                with open(dest_exe, 'wb') as out_file:
+                    for chunk in r.iter_content(chunk_size=chunk_size):
                         if UPDATE_CANCEL_FLAG:
                             UPDATE_STATE["status"] = "idle"
                             return
-                        chunk = response.read(chunk_size)
-                        if not chunk:
-                            break
-                        out_file.write(chunk)
-                        downloaded += len(chunk)
-                        UPDATE_STATE["downloaded_bytes"] = downloaded
-                        
-                        now = time.time()
-                        if total_bytes > 0:
-                            UPDATE_STATE["percent"] = round((downloaded / total_bytes) * 100, 1)
-                        
-                        if now - last_calc_time >= 0.25:
-                            elapsed = now - last_calc_time
-                            bytes_diff = downloaded - last_calc_bytes
-                            speed_mb = (bytes_diff / (1024 * 1024)) / (elapsed if elapsed > 0 else 1)
-                            UPDATE_STATE["speed_mbps"] = round(speed_mb, 2)
-                            last_calc_time = now
-                            last_calc_bytes = downloaded
+                        if chunk:
+                            out_file.write(chunk)
+                            downloaded += len(chunk)
+                            UPDATE_STATE["downloaded_bytes"] = downloaded
+                            
+                            now = time.time()
+                            if total_bytes > 0:
+                                UPDATE_STATE["percent"] = round((downloaded / total_bytes) * 100, 1)
+                            
+                            if now - last_calc_time >= 0.2:
+                                elapsed = now - last_calc_time
+                                bytes_diff = downloaded - last_calc_bytes
+                                speed_mb = (bytes_diff / (1024 * 1024)) / (elapsed if elapsed > 0 else 1)
+                                UPDATE_STATE["speed_mbps"] = round(speed_mb, 2)
+                                last_calc_time = now
+                                last_calc_bytes = downloaded
 
                 UPDATE_STATE["percent"] = 100.0
                 UPDATE_STATE["status"] = "installing"
@@ -688,13 +706,20 @@ def perform_update():
 
                 installed_dir = os.path.expandvars(r"%LOCALAPPDATA%\Programs\Etsuko")
                 target_exe = os.path.join(installed_dir, "etsuko.exe")
+                current_exe = os.path.abspath(sys.executable)
                 bat_path = os.path.join(temp_dir, "etsuko_updater.bat")
                 
                 bat_content = f"""@echo off
 timeout /t 1 /nobreak >nul
 taskkill /F /IM etsuko.exe >nul 2>&1
+timeout /t 1 /nobreak >nul
 start "" /wait "{dest_exe}" /SILENT /CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS
-start "" "{target_exe}"
+if exist "{current_exe}" (
+    copy /y "{target_exe}" "{current_exe}" >nul 2>&1
+    start "" "{current_exe}"
+) else (
+    start "" "{target_exe}"
+)
 del "%~f0"
 """
                 with open(bat_path, "w", encoding="utf-8") as bf:

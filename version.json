@@ -1,6 +1,6 @@
 {
-  "version": "69.3",
-  "changelog": "Multi-threaded high-performance audio engine, anti-occlusion background streaming during full-screen gaming, crash supervisor watchdog",
-  "download_url": "https://github.com/khalilmalik0808/etsuko-music/releases/download/v69.3/Etsuko_Setup.exe",
-  "download_url_standalone": "https://github.com/khalilmalik0808/etsuko-music/releases/download/v69.3/etsuko.exe"
+  "version": "69.4",
+  "changelog": "Instant auto-update popup across any screen, high-speed streaming chunk downloader, self-restarting installer and multi-threaded engine",
+  "download_url": "https://github.com/khalilmalik0808/etsuko-music/releases/download/v69.4/Etsuko_Setup.exe",
+  "download_url_standalone": "https://github.com/khalilmalik0808/etsuko-music/releases/download/v69.4/etsuko.exe"
 }

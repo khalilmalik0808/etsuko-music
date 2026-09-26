@@ -2,7 +2,7 @@
 ; Creates a professional Windows Setup Installer without requiring admin rights
 
 #define MyAppName "Etsuko"
-#define MyAppVersion "69.3"
+#define MyAppVersion "69.4"
 #define MyAppPublisher "Etsuko Neural Audio"
 #define MyAppExeName "etsuko.exe"
 

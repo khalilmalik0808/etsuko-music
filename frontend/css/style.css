@@ -2936,6 +2936,10 @@ body.figma-dark {
 }
 
 /* Update Progress Modal */
+.update-modal-backdrop {
+  z-index: 99999 !important;
+}
+
 .update-modal-box {
   max-width: 480px;
   background: rgba(14, 15, 23, 0.95);
