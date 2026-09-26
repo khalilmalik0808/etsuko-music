@@ -11,6 +11,16 @@ if sys.platform == 'win32':
         sys.stderr.reconfigure(encoding='utf-8', errors='replace')
     except Exception:
         pass
+    # Prevent Windows/WebView2 from throttling or suspending background playback while gaming
+    existing_args = os.environ.get('WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS', '')
+    gamer_args = (
+        '--disable-background-timer-throttling '
+        '--disable-backgrounding-occluded-windows '
+        '--disable-renderer-backgrounding '
+        '--disable-features=CalculateNativeWinOcclusion '
+        '--autoplay-policy=no-user-gesture-required'
+    )
+    os.environ['WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS'] = f"{existing_args} {gamer_args}".strip()
 
 import webview
 from backend.server import start_server
@@ -40,9 +50,17 @@ def wait_for_server(url, timeout=10):
             time.sleep(0.15)
     return False
 
+def run_server_supervised(host, port):
+    while True:
+        try:
+            start_server(host, port)
+        except Exception as e:
+            print(f"[Etsuko] Server supervisor caught error: {e}. Restarting in 1s...")
+            time.sleep(1.0)
+
 def main():
     port = find_free_port()
-    server_thread = threading.Thread(target=start_server, args=('127.0.0.1', port), daemon=True)
+    server_thread = threading.Thread(target=run_server_supervised, args=('127.0.0.1', port), daemon=True)
     server_thread.start()
 
     url = f"http://127.0.0.1:{port}/"

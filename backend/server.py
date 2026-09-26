@@ -5,7 +5,15 @@ import time
 import urllib.parse
 import urllib.request
 import threading
+import socket
 import requests
+
+# Force IPv4 in requests and urllib3 across the entire process to prevent 21-second IPv6 handshake timeouts on Windows
+try:
+    import urllib3.util.connection
+    urllib3.util.connection.allowed_gai_family = lambda: socket.AF_INET
+except Exception:
+    pass
 
 # Ensure UTF-8 output on Windows consoles to prevent charmap errors
 if sys.platform == 'win32':
@@ -28,7 +36,7 @@ app = Bottle()
 CACHE_EXPIRY = 1800  # 30 mins
 STREAM_CACHE = {}
 
-APP_VERSION = "69.2"
+APP_VERSION = "69.3"
 UPDATE_BEACON_URL = "https://raw.githubusercontent.com/khalilmalik0808/etsuko-music/main/version.json"
 
 try:
@@ -45,6 +53,9 @@ def get_yt_dlp_opts():
         'noplaylist': True,
         'extract_flat': False,
         'skip_download': True,
+        'socket_timeout': 8,
+        'retries': 2,
+        'source_address': '0.0.0.0',
     }
     opts['js_runtimes'] = {'node': {}}
     return opts
@@ -301,13 +312,13 @@ def proxy_audio_stream(video_id):
         req_headers['Range'] = range_header
 
     try:
-        upstream = requests.get(stream_url, headers=req_headers, stream=True, timeout=12)
-        if upstream.status_code in (403, 410):
-            print(f"[Etsuko] Stream token expired ({upstream.status_code}) for {video_id}, re-resolving fresh stream...")
+        upstream = requests.get(stream_url, headers=req_headers, stream=True, timeout=(5, 12))
+        if upstream.status_code >= 400:
+            print(f"[Etsuko] Stream error ({upstream.status_code}) for {video_id}, re-resolving fresh stream...")
             stream_url = resolve_audio_stream(video_id, force=True)
             if not stream_url:
                 return HTTPResponse(status=404, body="Stream not found")
-            upstream = requests.get(stream_url, headers=req_headers, stream=True, timeout=12)
+            upstream = requests.get(stream_url, headers=req_headers, stream=True, timeout=(5, 12))
 
         content_type = upstream.headers.get('Content-Type', 'audio/webm')
         content_range = upstream.headers.get('Content-Range')
@@ -332,9 +343,13 @@ def proxy_audio_stream(video_id):
                     if chunk:
                         yield chunk
             except Exception as e:
-                print(f"[Etsuko] Proxy streaming interrupted: {e}")
+                # Client closed stream or socket dropped
+                pass
             finally:
-                upstream.close()
+                try:
+                    upstream.close()
+                except Exception:
+                    pass
 
         return HTTPResponse(status=upstream.status_code, body=body_generator(), headers=headers)
     except Exception as e:
@@ -725,9 +740,32 @@ def serve_index():
 def serve_static(filepath):
     return static_file(filepath, root=FRONTEND_DIR)
 
+from bottle import ServerAdapter
+from wsgiref.simple_server import make_server, WSGIRequestHandler, WSGIServer
+from socketserver import ThreadingMixIn
+
+class ThreadedWSGIServer(ThreadingMixIn, WSGIServer):
+    daemon_threads = True
+    allow_reuse_address = True
+
+class QuietWSGIRequestHandler(WSGIRequestHandler):
+    def log_message(self, format, *args):
+        pass
+
+class ThreadedWSGIServerAdapter(ServerAdapter):
+    def run(self, handler):
+        server = make_server(self.host, self.port, handler,
+                             server_class=ThreadedWSGIServer,
+                             handler_class=QuietWSGIRequestHandler)
+        server.serve_forever()
+
 def start_server(host='127.0.0.1', port=52331):
-    print(f"[Etsuko] Starting backend streaming server on http://{host}:{port}")
-    app.run(host=host, port=port, quiet=True, debug=False)
+    print(f"[Etsuko] Starting concurrent multi-threaded backend streaming server on http://{host}:{port}")
+    try:
+        app.run(host=host, port=port, server=ThreadedWSGIServerAdapter, quiet=True)
+    except Exception as e:
+        print(f"[Etsuko] Threaded server fallback: {e}")
+        app.run(host=host, port=port, quiet=True, debug=False)
 
 if __name__ == '__main__':
     start_server()

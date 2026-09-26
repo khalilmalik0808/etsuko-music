@@ -68,6 +68,8 @@ class EtsukoPlayer {
     this.consecutiveFailures = 0;
     this.failureSkipTimer = null;
 
+    this.userPaused = false;
+
     this.audio.addEventListener('playing', () => {
       this.showSpinner(false);
       this.consecutiveFailures = 0;
@@ -77,6 +79,23 @@ class EtsukoPlayer {
       }
       this.initVisualizer();
     });
+
+    this.audio.addEventListener('stalled', () => {
+      console.warn('[Etsuko] Audio stream stalled, checking buffer state...');
+      if (this.isPlaying && this.audio.paused && !this.userPaused) {
+        this.audio.play().catch(() => {});
+      }
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        if (this.isPlaying && this.audio.paused && !this.userPaused) {
+          console.log('[Etsuko] Window visibility restored, resuming playback...');
+          this.audio.play().catch(() => {});
+        }
+      }
+    });
+
     this.audio.addEventListener('error', (e) => {
       console.warn('[Etsuko] Audio element error event:', e);
       this.showSpinner(false);
@@ -393,6 +412,7 @@ class EtsukoPlayer {
 
     // Stream audio via proxy stream (prevents 403 CDN & CORS errors)
     try {
+      this.userPaused = false;
       this.audio.src = `/api/proxy_stream/${encodeURIComponent(track.videoId)}`;
       if (this.audioContext && this.audioContext.state === 'suspended') {
         this.audioContext.resume();
@@ -402,6 +422,7 @@ class EtsukoPlayer {
       this.fetchAutoplayRadio(track.videoId);
       window.dispatchEvent(new CustomEvent('etsuko:track-started', { detail: track }));
     } catch (e) {
+      if (e && (e.name === 'AbortError' || e.code === 20)) return;
       console.warn('[Etsuko] Play interrupted or delayed, retrying...', e);
       try {
         await new Promise(r => setTimeout(r, 500));
@@ -410,6 +431,7 @@ class EtsukoPlayer {
         this.fetchAutoplayRadio(track.videoId);
         window.dispatchEvent(new CustomEvent('etsuko:track-started', { detail: track }));
       } catch (err2) {
+        if (err2 && (err2.name === 'AbortError' || err2.code === 20)) return;
         console.error('[Etsuko] Play failed completely:', err2);
         this.handlePlaybackFailure();
       }
@@ -466,11 +488,13 @@ class EtsukoPlayer {
       return;
     }
     if (this.audio.paused) {
+      this.userPaused = false;
       if (this.audioContext && this.audioContext.state === 'suspended') {
         this.audioContext.resume();
       }
       this.audio.play();
     } else {
+      this.userPaused = true;
       this.audio.pause();
     }
   }

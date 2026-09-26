@@ -44,7 +44,7 @@ def run_tests():
 
     # 3. Test Search (Default filter: songs)
     print("[TEST] Checking /api/search default songs filter...")
-    with urllib.request.urlopen(f"{base}/api/search?q=The+Weeknd", timeout=10) as r:
+    with urllib.request.urlopen(f"{base}/api/search?q=The+Weeknd", timeout=15) as r:
         assert r.status == 200
         data = json.loads(r.read().decode('utf-8'))
         assert "results" in data
@@ -54,7 +54,7 @@ def run_tests():
 
     # 3b. Test misery search
     print("[TEST] Checking search for 'misery'...")
-    with urllib.request.urlopen(f"{base}/api/search?q=misery", timeout=10) as r:
+    with urllib.request.urlopen(f"{base}/api/search?q=misery", timeout=15) as r:
         assert r.status == 200
         data_misery = json.loads(r.read().decode('utf-8'))
         assert len(data_misery.get('results', [])) > 0
@@ -63,7 +63,7 @@ def run_tests():
 
     # 3c. Test andaz e kram search
     print("[TEST] Checking search for 'andaz e kram'...")
-    with urllib.request.urlopen(f"{base}/api/search?q=andaz+e+kram", timeout=10) as r:
+    with urllib.request.urlopen(f"{base}/api/search?q=andaz+e+kram", timeout=15) as r:
         assert r.status == 200
         data_aek = json.loads(r.read().decode('utf-8'))
         assert len(data_aek.get('results', [])) > 0
