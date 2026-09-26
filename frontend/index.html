@@ -125,7 +125,11 @@
         <div class="update-bar-right">
           <button class="btn-update-now" id="btn-update-now">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-            <span id="btn-update-now-text">Update Now</span>
+            <span id="btn-update-now-text">Auto Update</span>
+          </button>
+          <button class="btn-update-browser" id="btn-update-browser" title="Download installer directly in browser">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+            <span>Browser Download</span>
           </button>
           <button class="btn-update-dismiss" id="btn-update-dismiss" title="Dismiss">&times;</button>
         </div>
@@ -243,11 +247,11 @@
           </div>
 
           <div class="search-filters-bar">
-            <button class="filter-pill active" data-filter="albums">
-              <span>Albums</span>
-            </button>
-            <button class="filter-pill" data-filter="songs">
+            <button class="filter-pill active" data-filter="songs">
               <span>Tracks</span>
+            </button>
+            <button class="filter-pill" data-filter="albums">
+              <span>Albums</span>
             </button>
             <button class="filter-pill" data-filter="artists">
               <span>Artists</span>

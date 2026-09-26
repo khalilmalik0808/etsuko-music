@@ -42,15 +42,33 @@ def run_tests():
         assert "categories" in data
         print(f"[TEST] PASS: Home feed returned {len(data['trending'])} trending tracks and {len(data['categories'])} categories")
 
-    # 3. Test Search
-    print("[TEST] Checking /api/search...")
-    with urllib.request.urlopen(f"{base}/api/search?q=The+Weeknd&filter=songs", timeout=10) as r:
+    # 3. Test Search (Default filter: songs)
+    print("[TEST] Checking /api/search default songs filter...")
+    with urllib.request.urlopen(f"{base}/api/search?q=The+Weeknd", timeout=10) as r:
         assert r.status == 200
         data = json.loads(r.read().decode('utf-8'))
         assert "results" in data
         assert len(data['results']) > 0
         first = data['results'][0]
-        print(f"[TEST] PASS: Search returned '{first['title']}' by '{first['artist']}' (id: {first['videoId']})")
+        print(f"[TEST] PASS: Default search returned '{first['title']}' by '{first['artist']}' (id: {first['videoId']})")
+
+    # 3b. Test misery search
+    print("[TEST] Checking search for 'misery'...")
+    with urllib.request.urlopen(f"{base}/api/search?q=misery", timeout=10) as r:
+        assert r.status == 200
+        data_misery = json.loads(r.read().decode('utf-8'))
+        assert len(data_misery.get('results', [])) > 0
+        m_first = data_misery['results'][0]
+        print(f"[TEST] PASS: 'misery' search returned '{m_first['title']}' by '{m_first['artist']}'")
+
+    # 3c. Test andaz e kram search
+    print("[TEST] Checking search for 'andaz e kram'...")
+    with urllib.request.urlopen(f"{base}/api/search?q=andaz+e+kram", timeout=10) as r:
+        assert r.status == 200
+        data_aek = json.loads(r.read().decode('utf-8'))
+        assert len(data_aek.get('results', [])) > 0
+        a_first = data_aek['results'][0]
+        print(f"[TEST] PASS: 'andaz e kram' search returned '{a_first['title']}' by '{a_first['artist']}'")
 
     # 4. Test Stream URL Resolution
     vid = first['videoId']

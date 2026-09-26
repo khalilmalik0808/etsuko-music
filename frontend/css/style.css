@@ -2862,6 +2862,28 @@ body.figma-dark {
   box-shadow: 0 0 20px rgba(0, 240, 255, 0.7);
 }
 
+.btn-update-browser {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-full);
+  padding: 6px 13px;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: var(--transition);
+  text-decoration: none;
+}
+
+.btn-update-browser:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: scale(1.03);
+}
+
 .btn-update-dismiss {
   background: transparent;
   border: none;

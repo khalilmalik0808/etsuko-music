@@ -122,7 +122,7 @@ def search_tracks():
     if request.method == 'OPTIONS':
         return {}
     query = request.query.get('q', '').strip()
-    filter_type = request.query.get('filter', 'albums')
+    filter_type = request.query.get('filter', 'songs')
     if not query:
         return {"results": []}
 
@@ -187,8 +187,8 @@ def search_tracks():
         except Exception as e:
             print(f"[Etsuko] YTMusic search error: {e}")
 
-    # 2. Fallback to yt-dlp search if results empty
-    if not results:
+    # 2. Fallback to yt-dlp search if results empty and filter is songs
+    if not results and filter_type == 'songs':
         try:
             import yt_dlp
             ydl_opts = {
@@ -199,12 +199,15 @@ def search_tracks():
                 'skip_download': True
             }
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(f"ytsearch15:{query}", download=False)
+                info = ydl.extract_info(f"ytsearch15:{query} song audio", download=False)
                 for entry in info.get('entries', []):
                     vid = entry.get('id')
                     if not vid:
                         continue
                     dur_secs = entry.get('duration') or 200
+                    # Ignore non-music compilations (>15 min) or sound effects (<20s)
+                    if dur_secs > 900 or dur_secs < 20:
+                        continue
                     m, s = divmod(dur_secs, 60)
                     results.append({
                         "videoId": vid,
@@ -599,9 +602,17 @@ def perform_update():
 
         def launch_and_exit():
             time.sleep(1.0)
-            subprocess.Popen([dest_exe, '/SILENT', '/CLOSEAPPLICATIONS', '/FORCECLOSEAPPLICATIONS'])
+            DETACHED_PROCESS = 0x00000008
+            CREATE_NEW_PROCESS_GROUP = 0x00000200
+            try:
+                subprocess.Popen(
+                    [dest_exe, '/SILENT', '/CLOSEAPPLICATIONS', '/FORCECLOSEAPPLICATIONS'],
+                    creationflags=DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP,
+                    close_fds=True
+                )
+            except Exception:
+                subprocess.Popen([dest_exe, '/SILENT', '/CLOSEAPPLICATIONS', '/FORCECLOSEAPPLICATIONS'])
             time.sleep(0.5)
-            subprocess.run(['taskkill', '/F', '/IM', 'etsuko.exe', '/T'], capture_output=True)
             os._exit(0)
 
         threading.Thread(target=launch_and_exit, daemon=True).start()

@@ -17,8 +17,10 @@ class EtsukoApp {
     this.currentView = 'home';
     this.viewHistory = ['home'];
     this.historyIndex = 0;
-    this.activeSearchFilter = 'albums';
+    this.activeSearchFilter = 'songs';
     this.searchDebounceTimer = null;
+    this.searchRequestId = 0;
+    this.searchAbortController = null;
     this.lyricsData = null;
     this.syncedLyrics = [];
     this.activePlaylistId = null; // null if Liked Tracks or not in playlist view
@@ -52,6 +54,7 @@ class EtsukoApp {
     this.updateDesc = document.getElementById('update-banner-desc');
     this.btnUpdateNow = document.getElementById('btn-update-now');
     this.btnUpdateNowText = document.getElementById('btn-update-now-text');
+    this.btnUpdateBrowser = document.getElementById('btn-update-browser');
     this.btnUpdateDismiss = document.getElementById('btn-update-dismiss');
     this.btnCheckUpdateManual = document.getElementById('btn-check-update-manual');
     this.latestUpdateData = null;
@@ -254,7 +257,9 @@ class EtsukoApp {
         this.navigateTo('search', false);
       }
       clearTimeout(this.searchDebounceTimer);
-      this.searchDebounceTimer = setTimeout(() => this.performSearch(q), 300);
+      if (q.length >= 2) {
+        this.searchDebounceTimer = setTimeout(() => this.performSearch(q), 400);
+      }
     });
 
     this.searchInput.addEventListener('keydown', (e) => {
@@ -263,7 +268,7 @@ class EtsukoApp {
         clearTimeout(this.searchDebounceTimer);
         const q = this.searchInput.value.trim();
         if (this.currentView !== 'search') this.navigateTo('search', false);
-        this.performSearch(q);
+        if (q) this.performSearch(q);
       }
     });
 
@@ -272,6 +277,7 @@ class EtsukoApp {
       if (this.searchMainInput) this.searchMainInput.value = '';
       this.searchClearBtn.style.display = 'none';
       if (this.searchMainClearBtn) this.searchMainClearBtn.style.display = 'none';
+      clearTimeout(this.searchDebounceTimer);
       this.performSearch('Top 50 Global Hits');
     });
 
@@ -283,14 +289,17 @@ class EtsukoApp {
         this.searchInput.value = e.target.value;
         this.searchClearBtn.style.display = q ? 'block' : 'none';
         clearTimeout(this.searchDebounceTimer);
-        this.searchDebounceTimer = setTimeout(() => this.performSearch(q), 300);
+        if (q.length >= 2) {
+          this.searchDebounceTimer = setTimeout(() => this.performSearch(q), 400);
+        }
       });
 
       this.searchMainInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
           clearTimeout(this.searchDebounceTimer);
-          this.performSearch(this.searchMainInput.value.trim());
+          const q = this.searchMainInput.value.trim();
+          if (q) this.performSearch(q);
         }
       });
     }
@@ -301,6 +310,7 @@ class EtsukoApp {
         this.searchInput.value = '';
         this.searchMainClearBtn.style.display = 'none';
         this.searchClearBtn.style.display = 'none';
+        clearTimeout(this.searchDebounceTimer);
         this.performSearch('Top 50 Global Hits');
       });
     }
@@ -530,6 +540,13 @@ class EtsukoApp {
 
     if (this.btnUpdateNow) {
       this.btnUpdateNow.addEventListener('click', () => this.installUpdate());
+    }
+
+    if (this.btnUpdateBrowser) {
+      this.btnUpdateBrowser.addEventListener('click', () => {
+        const url = this.latestUpdateData?.downloadUrl || 'https://github.com/khalilmalik0808/etsuko-music/releases';
+        window.open(url, '_blank');
+      });
     }
 
     if (this.btnCheckUpdateManual) {
@@ -893,6 +910,16 @@ class EtsukoApp {
   // --- Search Engine ---
   async performSearch(query) {
     if (!query) return;
+
+    // Abort previous pending search if any
+    if (this.searchAbortController) {
+      this.searchAbortController.abort();
+    }
+    this.searchAbortController = new AbortController();
+    const { signal } = this.searchAbortController;
+
+    const currentReqId = ++this.searchRequestId;
+
     this.searchLoading.style.display = 'flex';
     this.searchTracksList.innerHTML = '';
     this.topResultCol.style.display = 'none';
@@ -902,8 +929,14 @@ class EtsukoApp {
     }
 
     try {
-      const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&filter=${this.activeSearchFilter}`);
+      const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&filter=${this.activeSearchFilter}`, { signal });
       const data = await res.json();
+
+      // Guard: Discard stale response if a newer search was initiated
+      if (currentReqId !== this.searchRequestId) {
+        return;
+      }
+
       this.searchLoading.style.display = 'none';
 
       const results = data.results || [];
@@ -911,7 +944,7 @@ class EtsukoApp {
         this.searchTracksList.innerHTML = `
           <div style="color:var(--text-sub); padding: 32px 16px; text-align:center;">
             <p style="font-size:16px; font-weight:600; color:#fff; margin-bottom:6px;">No ${this.activeSearchFilter} found for "${query}"</p>
-            <p style="font-size:13px;">Try switching tabs (Albums / Tracks) or searching for a different name.</p>
+            <p style="font-size:13px;">Try switching tabs (Tracks / Albums / Artists) or searching for a different name.</p>
           </div>
         `;
         return;
@@ -1002,8 +1035,8 @@ class EtsukoApp {
           card.addEventListener('click', () => {
             this.searchInput.value = a.name;
             if (this.searchMainInput) this.searchMainInput.value = a.name;
-            this.activeSearchFilter = 'albums';
-            this.searchFilterPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-filter') === 'albums'));
+            this.activeSearchFilter = 'songs';
+            this.searchFilterPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-filter') === 'songs'));
             this.performSearch(a.name);
           });
           grid.appendChild(card);
@@ -1028,6 +1061,8 @@ class EtsukoApp {
         this.searchTracksList.appendChild(row);
       });
     } catch (e) {
+      if (e.name === 'AbortError') return;
+      if (currentReqId !== this.searchRequestId) return;
       this.searchLoading.style.display = 'none';
       console.error('[Etsuko] Search error:', e);
       this.searchTracksList.innerHTML = `
