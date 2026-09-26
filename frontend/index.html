@@ -61,7 +61,7 @@
         <div class="library-header">
           <div class="library-title">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-            <span>Your Crates</span>
+            <span>Your Playlists</span>
           </div>
           <button class="btn-figma-icon" id="btn-new-playlist" title="New Playlist">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -243,11 +243,11 @@
           </div>
 
           <div class="search-filters-bar">
-            <button class="filter-pill active" data-filter="songs">
-              <span>Tracks</span>
-            </button>
-            <button class="filter-pill" data-filter="albums">
+            <button class="filter-pill active" data-filter="albums">
               <span>Albums</span>
+            </button>
+            <button class="filter-pill" data-filter="songs">
+              <span>Tracks</span>
             </button>
             <button class="filter-pill" data-filter="artists">
               <span>Artists</span>
@@ -268,7 +268,7 @@
 
             <!-- Right: Track List -->
             <div class="songs-result-col" id="songs-result-col">
-              <h3 class="section-title" id="search-results-title">Tracks</h3>
+              <h3 class="section-title" id="search-results-title">Albums & Tracks</h3>
               <div class="tracks-list" id="search-tracks-list"></div>
             </div>
           </div>
@@ -303,7 +303,7 @@
             </button>
             <button class="btn-figma-danger" id="btn-delete-playlist" style="display:none;" title="Delete this Playlist">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-              <span>Delete Crate</span>
+              <span>Delete Playlist</span>
             </button>
             <div class="playlist-filter-box">
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -344,21 +344,35 @@
             <h3>Live Queue</h3>
             <span class="queue-badge" id="queue-count-badge">0 tracks</span>
           </div>
-          <button class="btn-figma-icon" id="btn-close-queue">&times;</button>
+          <button class="btn-figma-icon btn-queue-close" id="btn-close-queue" title="Close Queue">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
         </div>
-        <div class="queue-section">
-          <h4>Now Streaming</h4>
-          <div id="queue-now-playing"></div>
-        </div>
-        <div class="queue-section">
+
+        <div class="queue-section queue-section-now">
           <div class="queue-section-header">
-            <h4>Next In Line</h4>
-            <button class="btn-figma-text" id="btn-clear-queue">Clear</button>
+            <h4>Now Playing</h4>
+            <div class="queue-live-indicator">
+              <span class="live-dot"></span>
+              <span>LIVE</span>
+            </div>
+          </div>
+          <div id="queue-now-playing" class="queue-now-playing-container"></div>
+        </div>
+
+        <div class="queue-section queue-section-upnext">
+          <div class="queue-section-header">
+            <h4>Next in Queue</h4>
+            <button class="btn-figma-text btn-clear-queue-text" id="btn-clear-queue" title="Clear upcoming tracks">Clear All</button>
           </div>
           <div id="queue-list" class="queue-track-list"></div>
         </div>
-        <div class="queue-section">
-          <h4>Auto-Frequency (Radio)</h4>
+
+        <div class="queue-section queue-section-autoplay">
+          <div class="queue-section-header">
+            <h4>Recommended Next</h4>
+            <span class="queue-radio-tag">AUTOPLAY</span>
+          </div>
           <div id="queue-autoplay-list" class="queue-track-list"></div>
         </div>
       </aside>
@@ -381,7 +395,7 @@
             <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
           </svg>
         </button>
-        <button class="btn-figma-icon-small" id="player-add-playlist-btn" title="Add to Crate">
+        <button class="btn-figma-icon-small" id="player-add-playlist-btn" title="Add to Playlist">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
         </button>
       </div>
@@ -450,14 +464,14 @@
   <div class="modal-backdrop" id="modal-new-playlist" style="display:none;">
     <div class="modal-box">
       <div class="modal-header">
-        <h3>Create New Crate</h3>
+        <h3>Create New Playlist</h3>
         <span class="modal-badge">PLAYLIST</span>
       </div>
-      <input type="text" id="input-playlist-name" placeholder="Crate name (e.g. Night Drive, Gym Hype)..." maxlength="40">
+      <input type="text" id="input-playlist-name" placeholder="Playlist name (e.g. Night Drive, Gym Hype)..." maxlength="40">
       <textarea id="input-playlist-desc" placeholder="Add a description or vibe tags..." rows="3"></textarea>
       <div class="modal-actions">
         <button class="btn-figma-secondary" id="btn-modal-cancel">Cancel</button>
-        <button class="btn-figma-primary" id="btn-modal-save">Create Crate</button>
+        <button class="btn-figma-primary" id="btn-modal-save">Create Playlist</button>
       </div>
     </div>
   </div>
@@ -466,7 +480,7 @@
   <div class="modal-backdrop" id="modal-add-to-playlist" style="display:none;">
     <div class="modal-box">
       <div class="modal-header">
-        <h3>Add Track to Crate</h3>
+        <h3>Add Track to Playlist</h3>
         <span class="modal-badge" id="modal-add-track-title">Track</span>
       </div>
       <p style="font-size:13px; color:var(--text-sub);">Select which playlist to store this track in:</p>

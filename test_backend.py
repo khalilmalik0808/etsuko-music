@@ -172,10 +172,42 @@ def run_tests():
     )
     with urllib.request.urlopen(req_del_pl, timeout=5) as r:
         assert json.loads(r.read().decode('utf-8')).get('success') == True
-        print(f"[TEST] PASS: Deleted crate {pl_id}")
+        print(f"[TEST] PASS: Deleted playlist {pl_id}")
+
+    # 10. Test Proxy Audio Streaming with Range Request (206)
+    print(f"[TEST] Checking /api/proxy_stream/{vid} with Range header...")
+    req_proxy = urllib.request.Request(
+        f"{base}/api/proxy_stream/{vid}",
+        headers={'Range': 'bytes=0-1024'}
+    )
+    with urllib.request.urlopen(req_proxy, timeout=15) as r:
+        assert r.status == 206
+        chunk = r.read(1025)
+        assert len(chunk) > 0
+        content_range = r.headers.get('Content-Range')
+        assert content_range and 'bytes' in content_range
+        print(f"[TEST] PASS: Proxy stream delivered 206 Partial Content ({content_range}, read {len(chunk)} bytes)")
+
+    # 11. Test Album Details Endpoint
+    print("[TEST] Checking /api/search for default album results...")
+    with urllib.request.urlopen(f"{base}/api/search?q=Starboy&filter=albums", timeout=10) as r:
+        search_data = json.loads(r.read().decode('utf-8'))
+        assert "results" in search_data and len(search_data['results']) > 0
+        album_item = search_data['results'][0]
+        assert "browseId" in album_item
+        album_bid = album_item['browseId']
+        print(f"[TEST] PASS: Found album '{album_item['title']}' (browseId: {album_bid})")
+
+    print(f"[TEST] Checking /api/album/{album_bid}...")
+    with urllib.request.urlopen(f"{base}/api/album/{album_bid}", timeout=10) as r:
+        assert r.status == 200
+        album_data = json.loads(r.read().decode('utf-8'))
+        assert "tracks" in album_data
+        assert len(album_data['tracks']) > 0
+        print(f"[TEST] PASS: Album endpoint returned '{album_data['title']}' with {len(album_data['tracks'])} tracks")
 
     print("\n==========================================")
-    print("ALL 9 BACKEND & CRATE VERIFICATION TESTS PASSED 100%!")
+    print("ALL 11 BACKEND, STREAMING & ALBUM VERIFICATION TESTS PASSED 100%!")
     print("==========================================")
 
 if __name__ == '__main__':

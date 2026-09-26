@@ -5,6 +5,7 @@ import time
 import urllib.parse
 import urllib.request
 import threading
+import requests
 
 # Ensure UTF-8 output on Windows consoles to prevent charmap errors
 if sys.platform == 'win32':
@@ -38,7 +39,7 @@ except Exception as e:
 
 def get_yt_dlp_opts():
     opts = {
-        'format': 'bestaudio/best',
+        'format': 'bestaudio[ext=m4a]/bestaudio/best',
         'quiet': True,
         'no_warnings': True,
         'noplaylist': True,
@@ -121,7 +122,7 @@ def search_tracks():
     if request.method == 'OPTIONS':
         return {}
     query = request.query.get('q', '').strip()
-    filter_type = request.query.get('filter', 'songs')
+    filter_type = request.query.get('filter', 'albums')
     if not query:
         return {"results": []}
 
@@ -134,17 +135,24 @@ def search_tracks():
             if not raw_results and filter_type == 'songs':
                 raw_results = ytmusic.search(query, limit=25)
 
+            seen_keys = set()
             for r in raw_results:
                 result_type = r.get('resultType', filter_type)
                 if filter_type == 'songs' or result_type in ('song', 'video'):
                     video_id = r.get('videoId')
                     if not video_id:
                         continue
+                    title = r.get('title', 'Unknown Title')
                     artists = ", ".join([a['name'] for a in r.get('artists', [{'name': 'Unknown'}])])
+                    norm_key = (title.lower().strip(), artists.lower().strip())
+                    if norm_key in seen_keys:
+                        continue
+                    seen_keys.add(norm_key)
+
                     album = r.get('album', {}).get('name', '') if r.get('album') else ''
                     results.append({
                         "videoId": video_id,
-                        "title": r.get('title', 'Unknown Title'),
+                        "title": title,
                         "artist": artists,
                         "album": album,
                         "duration": r.get('duration', '3:30'),
@@ -152,18 +160,26 @@ def search_tracks():
                         "isLiked": db.is_liked(video_id)
                     })
                 elif filter_type == 'albums' or result_type == 'album':
+                    bid = r.get('browseId')
+                    if not bid or bid in seen_keys:
+                        continue
+                    seen_keys.add(bid)
                     results.append({
                         "type": "album",
-                        "browseId": r.get('browseId'),
+                        "browseId": bid,
                         "title": r.get('title', 'Unknown Album'),
                         "artist": ", ".join([a['name'] for a in r.get('artists', [{'name': 'Unknown'}])]),
                         "year": r.get('year', ''),
                         "thumbnail": clean_thumbnail(r.get('thumbnails', []))
                     })
                 elif filter_type == 'artists' or result_type == 'artist':
+                    bid = r.get('browseId')
+                    if not bid or bid in seen_keys:
+                        continue
+                    seen_keys.add(bid)
                     results.append({
                         "type": "artist",
-                        "browseId": r.get('browseId'),
+                        "browseId": bid,
                         "name": r.get('artist', r.get('name', 'Unknown Artist')),
                         "subscribers": r.get('subscribers', ''),
                         "thumbnail": clean_thumbnail(r.get('thumbnails', []))
@@ -273,28 +289,23 @@ def proxy_audio_stream(video_id):
         return HTTPResponse(status=404, body="Stream not found")
     
     range_header = request.headers.get('Range')
-    req = urllib.request.Request(stream_url)
-    req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+    req_headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': '*/*',
+        'Connection': 'keep-alive',
+    }
     if range_header:
-        req.add_header('Range', range_header)
+        req_headers['Range'] = range_header
 
     try:
-        try:
-            upstream = urllib.request.urlopen(req, timeout=15)
-        except urllib.error.HTTPError as he:
-            if he.code in (403, 410):
-                print(f"[Etsuko] Stream token expired ({he.code}) for {video_id}, re-resolving fresh stream...")
-                stream_url = resolve_audio_stream(video_id, force=True)
-                if not stream_url:
-                    return HTTPResponse(status=404, body="Stream not found")
-                req = urllib.request.Request(stream_url)
-                req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
-                if range_header:
-                    req.add_header('Range', range_header)
-                upstream = urllib.request.urlopen(req, timeout=15)
-            else:
-                raise
-        status_code = upstream.status
+        upstream = requests.get(stream_url, headers=req_headers, stream=True, timeout=12)
+        if upstream.status_code in (403, 410):
+            print(f"[Etsuko] Stream token expired ({upstream.status_code}) for {video_id}, re-resolving fresh stream...")
+            stream_url = resolve_audio_stream(video_id, force=True)
+            if not stream_url:
+                return HTTPResponse(status=404, body="Stream not found")
+            upstream = requests.get(stream_url, headers=req_headers, stream=True, timeout=12)
+
         content_type = upstream.headers.get('Content-Type', 'audio/webm')
         content_range = upstream.headers.get('Content-Range')
         content_length = upstream.headers.get('Content-Length')
@@ -304,6 +315,7 @@ def proxy_audio_stream(video_id):
             'Content-Type': content_type,
             'Accept-Ranges': accept_ranges,
             'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Headers': 'Range',
             'Cache-Control': 'no-cache'
         }
         if content_range:
@@ -312,18 +324,62 @@ def proxy_audio_stream(video_id):
             headers['Content-Length'] = content_length
 
         def body_generator():
-            while True:
-                chunk = upstream.read(64 * 1024)
-                if not chunk:
-                    break
-                yield chunk
+            try:
+                for chunk in upstream.iter_content(chunk_size=64 * 1024):
+                    if chunk:
+                        yield chunk
+            except Exception as e:
+                print(f"[Etsuko] Proxy streaming interrupted: {e}")
+            finally:
+                upstream.close()
 
-        return HTTPResponse(status=status_code, body=body_generator(), headers=headers)
+        return HTTPResponse(status=upstream.status_code, body=body_generator(), headers=headers)
     except Exception as e:
         print(f"[Etsuko] Stream proxy exception: {e}")
-        response.status = 302
-        response.set_header('Location', stream_url)
-        return ""
+        return HTTPResponse(status=500, body=f"Stream proxy error: {e}")
+
+@app.route('/api/album/<browse_id>', method=['GET'])
+def get_album_details(browse_id):
+    if not ytmusic:
+        return HTTPResponse(status=500, body=json.dumps({"error": "YTMusic not initialized"}))
+    try:
+        album_data = ytmusic.get_album(browse_id)
+        if not album_data:
+            return HTTPResponse(status=404, body=json.dumps({"error": "Album not found"}))
+
+        album_cover = clean_thumbnail(album_data.get('thumbnails', []))
+        artists_str = ", ".join([a['name'] for a in album_data.get('artists', [{'name': 'Unknown Artist'}])])
+        album_title = album_data.get('title', 'Unknown Album')
+        year = album_data.get('year', '')
+
+        tracks = []
+        for t in album_data.get('tracks', []):
+            vid = t.get('videoId')
+            if not vid:
+                continue
+            track_artists = ", ".join([a['name'] for a in t.get('artists', [{'name': artists_str}])])
+            track_thumb = clean_thumbnail(t.get('thumbnails', [])) if t.get('thumbnails') else album_cover
+            tracks.append({
+                "videoId": vid,
+                "title": t.get('title', 'Unknown Track'),
+                "artist": track_artists,
+                "album": album_title,
+                "duration": t.get('duration', '3:30'),
+                "thumbnail": track_thumb,
+                "isLiked": db.is_liked(vid)
+            })
+
+        return {
+            "browseId": browse_id,
+            "title": album_title,
+            "artist": artists_str,
+            "year": year,
+            "thumbnail": album_cover,
+            "tracks": tracks
+        }
+    except Exception as e:
+        print(f"[Etsuko] Error fetching album {browse_id}: {e}")
+        return HTTPResponse(status=500, body=json.dumps({"error": str(e)}))
 
 @app.route('/api/radio/<video_id>', method=['GET'])
 def get_radio(video_id):

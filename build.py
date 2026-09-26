@@ -30,6 +30,7 @@ def build_exe():
         "--add-data", "frontend;frontend",
         "--add-data", "etsuko.ico;.",
         "--hidden-import", "bottle",
+        "--hidden-import", "requests",
         "--hidden-import", "ytmusicapi",
         "--hidden-import", "yt_dlp",
         "--hidden-import", "webview",

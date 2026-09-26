@@ -65,22 +65,33 @@ class EtsukoPlayer {
     this.audio.addEventListener('play', () => this.onPlayStateChange(true));
     this.audio.addEventListener('pause', () => this.onPlayStateChange(false));
     this.audio.addEventListener('waiting', () => this.showSpinner(true));
+    this.consecutiveFailures = 0;
+    this.failureSkipTimer = null;
+
     this.audio.addEventListener('playing', () => {
       this.showSpinner(false);
+      this.consecutiveFailures = 0;
+      if (this.failureSkipTimer) {
+        clearTimeout(this.failureSkipTimer);
+        this.failureSkipTimer = null;
+      }
       this.initVisualizer();
     });
     this.audio.addEventListener('error', (e) => {
-      console.warn('[Etsuko] Audio playback error:', e);
+      console.warn('[Etsuko] Audio element error event:', e);
       this.showSpinner(false);
-      // Fallback: try proxy stream if direct url failed
-      if (this.currentTrack && !this.currentTrack._triedProxy) {
-        this.currentTrack._triedProxy = true;
-        this.audio.src = `/api/proxy_stream/${this.currentTrack.videoId}`;
-        this.audio.play().catch(() => {
-          this.handlePlaybackFailure();
-        });
-      } else {
-        this.handlePlaybackFailure();
+      this.handlePlaybackFailure();
+    });
+
+    window.addEventListener('etsuko:track-like-changed', (e) => {
+      const { videoId, isLiked } = e.detail || {};
+      if (this.currentTrack && this.currentTrack.videoId === videoId) {
+        this.currentTrack.isLiked = isLiked;
+        if (this.playerLikeBtn) {
+          this.playerLikeBtn.classList.toggle('liked', !!isLiked);
+          const svg = this.playerLikeBtn.querySelector('svg');
+          if (svg) svg.setAttribute('fill', isLiked ? '#ec4899' : 'none');
+        }
       }
     });
   }
@@ -249,8 +260,13 @@ class EtsukoPlayer {
           });
           this.currentTrack.isLiked = false;
           this.playerLikeBtn.classList.remove('liked');
+          const svg = this.playerLikeBtn.querySelector('svg');
+          if (svg) svg.setAttribute('fill', 'none');
           if (window.showToast) window.showToast('Removed from Liked Songs');
           window.dispatchEvent(new CustomEvent('etsuko:library-updated'));
+          window.dispatchEvent(new CustomEvent('etsuko:track-like-changed', {
+            detail: { videoId: this.currentTrack.videoId, isLiked: false }
+          }));
         } catch (e) {
           console.error('Unlike failed:', e);
         }
@@ -264,15 +280,20 @@ class EtsukoPlayer {
           const data = await res.json();
           this.currentTrack.isLiked = true;
           this.playerLikeBtn.classList.add('liked');
+          const svg = this.playerLikeBtn.querySelector('svg');
+          if (svg) svg.setAttribute('fill', '#ec4899');
           if (window.showToast) window.showToast('Added to Liked Songs');
           window.dispatchEvent(new CustomEvent('etsuko:library-updated'));
+          window.dispatchEvent(new CustomEvent('etsuko:track-like-changed', {
+            detail: { videoId: this.currentTrack.videoId, isLiked: true }
+          }));
         } catch (e) {
           console.error('Like failed:', e);
         }
       }
     });
 
-    // Player Add to Crate button
+    // Player Add to Playlist button
     if (this.playerAddPlaylistBtn) {
       this.playerAddPlaylistBtn.addEventListener('click', () => {
         if (this.currentTrack && window.app && window.app.openAddToPlaylistModal) {
@@ -370,42 +391,58 @@ class EtsukoPlayer {
       body: JSON.stringify(track)
     }).catch(() => {});
 
-    // Resolve audio stream
+    // Stream audio via proxy stream (prevents 403 CDN & CORS errors)
     try {
-      const res = await fetch(`/api/stream_url/${track.videoId}`);
-      const data = await res.json();
-      if (data.url) {
-        this.audio.src = data.url;
-      } else {
-        this.audio.src = `/api/proxy_stream/${track.videoId}`;
-      }
+      this.audio.src = `/api/proxy_stream/${encodeURIComponent(track.videoId)}`;
       if (this.audioContext && this.audioContext.state === 'suspended') {
         this.audioContext.resume();
       }
       await this.audio.play();
+      this.consecutiveFailures = 0;
       this.fetchAutoplayRadio(track.videoId);
       window.dispatchEvent(new CustomEvent('etsuko:track-started', { detail: track }));
     } catch (e) {
-      console.warn('[Etsuko] Stream playback failed directly, attempting proxy fallback...', e);
-      this.audio.src = `/api/proxy_stream/${track.videoId}`;
-      this.audio.play().catch(err => {
-        console.error('[Etsuko] Play failed completely:', err);
+      console.warn('[Etsuko] Play interrupted or delayed, retrying...', e);
+      try {
+        await new Promise(r => setTimeout(r, 500));
+        await this.audio.play();
+        this.consecutiveFailures = 0;
+        this.fetchAutoplayRadio(track.videoId);
+        window.dispatchEvent(new CustomEvent('etsuko:track-started', { detail: track }));
+      } catch (err2) {
+        console.error('[Etsuko] Play failed completely:', err2);
         this.handlePlaybackFailure();
-      });
+      }
     }
   }
 
   handlePlaybackFailure() {
     this.showSpinner(false);
+    if (this.failureSkipTimer) {
+      clearTimeout(this.failureSkipTimer);
+      this.failureSkipTimer = null;
+    }
+    this.consecutiveFailures = (this.consecutiveFailures || 0) + 1;
     const title = this.currentTrack ? this.currentTrack.title : 'this track';
+
+    if (this.consecutiveFailures >= 3) {
+      if (window.showToast) {
+        window.showToast('Multiple tracks failed to stream. Playback paused.');
+      }
+      this.consecutiveFailures = 0;
+      this.isPlaying = false;
+      this.updatePlayPauseUI(false);
+      return;
+    }
+
     if (window.showToast) {
       window.showToast(`Unable to stream "${title}". Skipping to next song...`);
     }
-    setTimeout(() => {
+    this.failureSkipTimer = setTimeout(() => {
       if (this.queue && this.queue.length > 1) {
         this.next();
       }
-    }, 1500);
+    }, 1800);
   }
 
   async fetchAutoplayRadio(videoId) {

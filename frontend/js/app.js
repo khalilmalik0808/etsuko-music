@@ -17,7 +17,7 @@ class EtsukoApp {
     this.currentView = 'home';
     this.viewHistory = ['home'];
     this.historyIndex = 0;
-    this.activeSearchFilter = 'songs';
+    this.activeSearchFilter = 'albums';
     this.searchDebounceTimer = null;
     this.lyricsData = null;
     this.syncedLyrics = [];
@@ -488,6 +488,32 @@ class EtsukoApp {
 
     window.addEventListener('etsuko:queue-updated', () => this.renderQueue());
     window.addEventListener('etsuko:library-updated', () => this.loadLibrary());
+    window.addEventListener('etsuko:track-like-changed', (e) => {
+      const { videoId, isLiked } = e.detail || {};
+      if (!videoId) return;
+
+      const rows = document.querySelectorAll(`.track-row[data-videoid="${videoId}"]`);
+      rows.forEach(r => {
+        const likeBtn = r.querySelector('.btn-like');
+        if (likeBtn) {
+          likeBtn.classList.toggle('liked', !!isLiked);
+          likeBtn.title = isLiked ? 'Remove from Liked Songs' : 'Save to Liked Songs';
+          const svg = likeBtn.querySelector('svg');
+          if (svg) svg.setAttribute('fill', isLiked ? '#ec4899' : 'none');
+        }
+      });
+
+      if (this.queueNowPlaying) {
+        const queueLike = this.queueNowPlaying.querySelector('.queue-now-like');
+        if (queueLike && window.player.currentTrack && window.player.currentTrack.videoId === videoId) {
+          queueLike.classList.toggle('liked', !!isLiked);
+          const svg = queueLike.querySelector('svg');
+          if (svg) svg.setAttribute('fill', isLiked ? '#ec4899' : 'none');
+        }
+      }
+
+      this.loadLibrary();
+    });
 
     window.addEventListener('etsuko:time-update', (e) => {
       if (this.currentView === 'lyrics' && this.syncedLyrics.length > 0) {
@@ -871,7 +897,8 @@ class EtsukoApp {
     this.searchTracksList.innerHTML = '';
     this.topResultCol.style.display = 'none';
     if (this.searchResultsTitle) {
-      this.searchResultsTitle.textContent = `Results for "${query}"`;
+      const typeLabel = this.activeSearchFilter === 'albums' ? 'Albums' : (this.activeSearchFilter === 'artists' ? 'Artists' : 'Tracks');
+      this.searchResultsTitle.textContent = `${typeLabel} for "${query}"`;
     }
 
     try {
@@ -883,14 +910,109 @@ class EtsukoApp {
       if (results.length === 0) {
         this.searchTracksList.innerHTML = `
           <div style="color:var(--text-sub); padding: 32px 16px; text-align:center;">
-            <p style="font-size:16px; font-weight:600; color:#fff; margin-bottom:6px;">No tracks found for "${query}"</p>
-            <p style="font-size:13px;">Try searching for a different song title, artist, or band name.</p>
+            <p style="font-size:16px; font-weight:600; color:#fff; margin-bottom:6px;">No ${this.activeSearchFilter} found for "${query}"</p>
+            <p style="font-size:13px;">Try switching tabs (Albums / Tracks) or searching for a different name.</p>
           </div>
         `;
         return;
       }
 
-      // Top result card
+      // 1. ALBUMS TAB
+      if (this.activeSearchFilter === 'albums') {
+        this.topResultCol.style.display = 'none';
+        const grid = document.createElement('div');
+        grid.className = 'albums-grid';
+        results.forEach(album => {
+          const card = document.createElement('div');
+          card.className = 'album-search-card';
+          card.innerHTML = `
+            <div class="album-card-cover-wrapper">
+              <img class="album-card-cover" src="${album.thumbnail}" alt="${album.title}" onerror="this.onerror=null; this.src='assets/default_cover.png';" loading="lazy">
+              <button class="album-card-play-overlay" title="Play Album">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><polygon points="7 4 19 12 7 20 7 4"></polygon></svg>
+              </button>
+            </div>
+            <div class="album-card-info">
+              <div class="album-card-title" title="${album.title}">${album.title}</div>
+              <div class="album-card-artist" title="${album.artist}">${album.artist}</div>
+              <div class="album-card-meta">
+                <span>Album</span>
+                ${album.year ? `<span>•</span><span>${album.year}</span>` : ''}
+              </div>
+            </div>
+          `;
+
+          // Quick Play overlay
+          const playBtn = card.querySelector('.album-card-play-overlay');
+          if (playBtn) {
+            playBtn.addEventListener('click', async (e) => {
+              e.stopPropagation();
+              try {
+                window.showToast(`Loading album "${album.title}"...`);
+                const aRes = await fetch(`/api/album/${encodeURIComponent(album.browseId)}`);
+                const aData = await aRes.json();
+                if (aData.tracks && aData.tracks.length > 0) {
+                  window.player.playTrack(aData.tracks[0], aData.tracks);
+                } else {
+                  window.showToast('No playable tracks found in album');
+                }
+              } catch (err) {
+                console.error('Play album error:', err);
+                window.showToast('Unable to stream album tracks');
+              }
+            });
+          }
+
+          // Card Click: Open Full Album in Playlist View
+          card.addEventListener('click', async () => {
+            try {
+              window.showToast(`Loading "${album.title}"...`);
+              const aRes = await fetch(`/api/album/${encodeURIComponent(album.browseId)}`);
+              const aData = await aRes.json();
+              if (aData.tracks) {
+                this.openPlaylistView(null, aData.title, aData.artist, aData.tracks, aData.thumbnail, 'ALBUM');
+              }
+            } catch (err) {
+              console.error('Open album error:', err);
+              window.showToast('Unable to open album');
+            }
+          });
+
+          grid.appendChild(card);
+        });
+        this.searchTracksList.appendChild(grid);
+        return;
+      }
+
+      // 2. ARTISTS TAB
+      if (this.activeSearchFilter === 'artists') {
+        this.topResultCol.style.display = 'none';
+        const grid = document.createElement('div');
+        grid.className = 'artists-carousel';
+        grid.style.flexWrap = 'wrap';
+        grid.style.justifyContent = 'flex-start';
+        results.forEach(a => {
+          const card = document.createElement('div');
+          card.className = 'artist-spotlight-card';
+          card.innerHTML = `
+            <img class="artist-spotlight-img" src="${a.thumbnail}" alt="${a.name}" onerror="this.onerror=null; this.src='assets/default_cover.png';" loading="lazy">
+            <div class="artist-spotlight-name" title="${a.name}">${a.name}</div>
+            <div class="artist-spotlight-role">Artist</div>
+          `;
+          card.addEventListener('click', () => {
+            this.searchInput.value = a.name;
+            if (this.searchMainInput) this.searchMainInput.value = a.name;
+            this.activeSearchFilter = 'albums';
+            this.searchFilterPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-filter') === 'albums'));
+            this.performSearch(a.name);
+          });
+          grid.appendChild(card);
+        });
+        this.searchTracksList.appendChild(grid);
+        return;
+      }
+
+      // 3. TRACKS TAB (Default songs result)
       const top = results[0];
       this.topResultCol.style.display = 'block';
       this.topResultCard.innerHTML = `
@@ -901,7 +1023,6 @@ class EtsukoApp {
       `;
       this.topResultCard.onclick = () => window.player.playTrack(top, results);
 
-      // Song list
       results.forEach((track, idx) => {
         const row = this.createTrackRow(track, idx + 1, results, false, null);
         this.searchTracksList.appendChild(row);
@@ -947,11 +1068,11 @@ class EtsukoApp {
             <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
           </svg>
         </button>
-        <button class="btn-track-action btn-add-crate" title="Add to Crate">
+        <button class="btn-track-action btn-add-playlist btn-add-crate" title="Add to Playlist">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
         </button>
         ${(isPlaylistView && playlistId) ? `
-          <button class="btn-track-action btn-delete-row" title="Remove from Crate">
+          <button class="btn-track-action btn-delete-row" title="Remove from Playlist">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
           </button>
         ` : ''}
@@ -961,21 +1082,21 @@ class EtsukoApp {
 
     // Click handler for entire row or action buttons
     row.addEventListener('click', async (e) => {
-      // 1. Add to Crate
-      if (e.target.closest('.btn-add-crate')) {
+      // 1. Add to Playlist
+      if (e.target.closest('.btn-add-playlist, .btn-add-crate')) {
         e.stopPropagation();
         this.openAddToPlaylistModal(track);
         return;
       }
 
-      // 2. Remove from Custom Crate
+      // 2. Remove from Custom Playlist
       if (e.target.closest('.btn-delete-row')) {
         e.stopPropagation();
         if (playlistId) {
           try {
             await fetch(`/api/library/playlist/${playlistId}/track/${track.videoId}`, { method: 'DELETE' });
             row.remove();
-            window.showToast('Removed from Crate');
+            window.showToast('Removed from Playlist');
             const remaining = this.playlistTracksList.querySelectorAll('.track-row').length;
             this.playlistHeaderMeta.textContent = `${remaining} tracks`;
             this.loadLibrary();
@@ -1023,6 +1144,10 @@ class EtsukoApp {
           window.player.currentTrack.isLiked = false;
         }
 
+        window.dispatchEvent(new CustomEvent('etsuko:track-like-changed', {
+          detail: { videoId: track.videoId, isLiked: false }
+        }));
+
         if (isLikedView) {
           row.remove();
           const remaining = this.playlistTracksList.querySelectorAll('.track-row').length;
@@ -1052,6 +1177,11 @@ class EtsukoApp {
           window.player.playerLikeBtn.classList.add('liked');
           window.player.currentTrack.isLiked = true;
         }
+
+        window.dispatchEvent(new CustomEvent('etsuko:track-like-changed', {
+          detail: { videoId: track.videoId, isLiked: true }
+        }));
+
         this.loadLibrary();
       } catch (e) {
         console.error('Like failed:', e);
@@ -1063,7 +1193,7 @@ class EtsukoApp {
   async openAddToPlaylistModal(track) {
     this.trackToAddToPlaylist = track;
     this.modalAddTrackTitle.textContent = track.title || 'Track';
-    this.modalPlaylistSelectList.innerHTML = '<p style="color:var(--text-sub); font-size:13px;">Loading crates...</p>';
+    this.modalPlaylistSelectList.innerHTML = '<p style="color:var(--text-sub); font-size:13px;">Loading playlists...</p>';
     this.modalAddToPlaylist.style.display = 'flex';
 
     try {
@@ -1074,8 +1204,8 @@ class EtsukoApp {
       if (playlists.length === 0) {
         this.modalPlaylistSelectList.innerHTML = `
           <div style="padding:16px; text-align:center; color:var(--text-sub); font-size:13px;">
-            <p>No crates found.</p>
-            <p style="margin-top:6px; color:var(--accent-cyan);">Create a crate first using "+ New Crate" in sidebar!</p>
+            <p>No playlists found.</p>
+            <p style="margin-top:6px; color:var(--accent-cyan);">Create a playlist first using "+ New Playlist" in sidebar!</p>
           </div>
         `;
         return;
@@ -1104,7 +1234,7 @@ class EtsukoApp {
             this.loadLibrary();
           } catch (e) {
             console.error('Failed to add track to playlist:', e);
-            window.showToast('Error adding track to crate');
+            window.showToast('Error adding track to playlist');
           }
         };
         this.modalPlaylistSelectList.appendChild(item);
@@ -1114,7 +1244,7 @@ class EtsukoApp {
     }
   }
 
-  // --- Library & Crates ---
+  // --- Library & Playlists ---
   async loadLibrary() {
     try {
       const likesRes = await fetch('/api/library/likes');
@@ -1152,7 +1282,7 @@ class EtsukoApp {
         item.addEventListener('click', async () => {
           const detailRes = await fetch(`/api/library/playlist/${pl.id}`);
           const detailData = await detailRes.json();
-          this.openPlaylistView(pl.id, pl.name, pl.description || 'Custom Crate', detailData.tracks || []);
+          this.openPlaylistView(pl.id, pl.name, pl.description || 'Custom Playlist', detailData.tracks || []);
         });
         this.libraryPlaylists.appendChild(item);
       });
@@ -1161,13 +1291,37 @@ class EtsukoApp {
     }
   }
 
-  openPlaylistView(playlistId, title, desc, tracks) {
+  openPlaylistView(playlistId, title, desc, tracks, coverUrl = null, typeLabel = null) {
     this.activePlaylistId = playlistId;
     this.currentPlaylistTracks = tracks || [];
     this.playlistHeaderTitle.textContent = title;
     this.playlistHeaderDesc.textContent = desc;
     this.playlistHeaderMeta.textContent = `${this.currentPlaylistTracks.length} tracks`;
     this.playlistTracksList.innerHTML = '';
+
+    const typeEl = document.getElementById('playlist-header-type');
+    if (typeEl) {
+      typeEl.textContent = typeLabel || (playlistId ? 'CUSTOM PLAYLIST' : (coverUrl ? 'ALBUM' : 'COLLECTION'));
+    }
+
+    const coverEl = document.getElementById('playlist-header-cover');
+    if (coverEl) {
+      if (coverUrl) {
+        coverEl.innerHTML = `<img src="${coverUrl}" alt="${title}" style="width:100%; height:100%; border-radius:12px; object-fit:cover;" onerror="this.src='assets/default_cover.png';">`;
+      } else if (!playlistId) {
+        coverEl.innerHTML = `
+          <svg viewBox="0 0 24 24" width="60" height="60" fill="white">
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+          </svg>`;
+      } else {
+        coverEl.innerHTML = `
+          <svg viewBox="0 0 24 24" width="50" height="50" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 18V5l12-2v13"></path>
+            <circle cx="6" cy="18" r="3"></circle>
+            <circle cx="18" cy="16" r="3"></circle>
+          </svg>`;
+      }
+    }
 
     if (this.playlistFilterInput) {
       this.playlistFilterInput.value = '';
@@ -1254,13 +1408,13 @@ class EtsukoApp {
     if (!this.activePlaylistId) return;
     try {
       await fetch(`/api/library/playlist/${this.activePlaylistId}`, { method: 'DELETE' });
-      window.showToast('Crate deleted');
+      window.showToast('Playlist deleted');
       this.activePlaylistId = null;
       this.loadLibrary();
       this.navigateTo('home');
     } catch (e) {
       console.error('Failed to delete playlist:', e);
-      window.showToast('Error deleting crate');
+      window.showToast('Error deleting playlist');
     }
   }
 
@@ -1279,7 +1433,7 @@ class EtsukoApp {
       this.modalNewPlaylist.style.display = 'none';
       this.inputPlaylistName.value = '';
       this.inputPlaylistDesc.value = '';
-      window.showToast(`Crate "${name}" created!`);
+      window.showToast(`Playlist "${name}" created!`);
       this.loadLibrary();
     } catch (e) {
       console.error('Create playlist failed:', e);
@@ -1290,20 +1444,47 @@ class EtsukoApp {
   renderQueue() {
     const current = window.player.currentTrack;
     if (current) {
+      const isLiked = !!current.isLiked;
       this.queueNowPlaying.innerHTML = `
-        <div class="queue-track-item">
-          <img src="${current.thumbnail}" alt="${current.title}" onerror="this.onerror=null; this.src='assets/default_cover.png';">
-          <div class="queue-track-info">
-            <div class="queue-track-title">${current.title}</div>
-            <div class="queue-track-artist">${current.artist}</div>
+        <div class="queue-now-card">
+          <div class="queue-now-card-img-wrap">
+            <img src="${current.thumbnail}" alt="${current.title}" onerror="this.onerror=null; this.src='assets/default_cover.png';" loading="lazy">
           </div>
+          <div class="queue-now-card-info">
+            <div class="queue-now-title" title="${current.title}">${current.title}</div>
+            <div class="queue-now-artist" title="${current.artist}">${current.artist}</div>
+          </div>
+          <button class="btn-like ${isLiked ? 'liked' : ''} queue-now-like" title="${isLiked ? 'Remove from Liked Songs' : 'Save to Liked Songs'}">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="${isLiked ? '#ec4899' : 'none'}" stroke="currentColor" stroke-width="2">
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+            </svg>
+          </button>
         </div>
       `;
+      const likeBtn = this.queueNowPlaying.querySelector('.queue-now-like');
+      if (likeBtn) {
+        likeBtn.onclick = (e) => {
+          e.stopPropagation();
+          if (window.player && window.player.playerLikeBtn) {
+            window.player.playerLikeBtn.click();
+          }
+        };
+      }
     } else {
-      this.queueNowPlaying.innerHTML = '<div style="color:var(--text-sub); font-size:13px;">Nothing playing</div>';
+      this.queueNowPlaying.innerHTML = `
+        <div class="queue-empty-box">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M9 18V5l12-2v13"></path>
+            <circle cx="6" cy="18" r="3"></circle>
+            <circle cx="18" cy="16" r="3"></circle>
+          </svg>
+          <div class="queue-empty-title">Nothing playing right now</div>
+          <div class="queue-empty-sub">Choose any track or album to start</div>
+        </div>
+      `;
     }
 
-    // Queue list
+    // Upcoming queue list
     this.queueList.innerHTML = '';
     const upcoming = window.player.queue.slice(window.player.queueIndex + 1);
     if (this.queueCountBadge) {
@@ -1311,41 +1492,103 @@ class EtsukoApp {
     }
 
     if (upcoming.length === 0) {
-      this.queueList.innerHTML = '<div style="color:var(--text-sub); font-size:13px;">Queue is empty</div>';
+      this.queueList.innerHTML = `
+        <div class="queue-empty-box">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <line x1="8" y1="6" x2="21" y2="6"></line>
+            <line x1="8" y1="12" x2="21" y2="12"></line>
+            <line x1="8" y1="18" x2="21" y2="18"></line>
+            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+          </svg>
+          <div class="queue-empty-title">Queue is empty</div>
+          <div class="queue-empty-sub">Add tracks from albums or playlists</div>
+        </div>
+      `;
     } else {
       upcoming.forEach((t, i) => {
         const item = document.createElement('div');
         item.className = 'queue-track-item';
         item.innerHTML = `
-          <img src="${t.thumbnail}" alt="${t.title}" onerror="this.onerror=null; this.src='assets/default_cover.png';">
+          <span class="queue-item-idx">${i + 1}</span>
+          <img src="${t.thumbnail}" alt="${t.title}" onerror="this.onerror=null; this.src='assets/default_cover.png';" loading="lazy">
           <div class="queue-track-info">
-            <div class="queue-track-title">${t.title}</div>
-            <div class="queue-track-artist">${t.artist}</div>
+            <div class="queue-track-title" title="${t.title}">${t.title}</div>
+            <div class="queue-track-artist" title="${t.artist}">${t.artist}</div>
+          </div>
+          <div class="queue-item-actions">
+            <button class="btn-queue-action btn-queue-remove" title="Remove from queue">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
           </div>
         `;
-        item.onclick = () => {
+
+        item.onclick = (e) => {
+          if (e.target.closest('.btn-queue-remove')) return;
           window.player.queueIndex = window.player.queueIndex + 1 + i;
           window.player.playTrack(t);
         };
+
+        const removeBtn = item.querySelector('.btn-queue-remove');
+        if (removeBtn) {
+          removeBtn.onclick = (e) => {
+            e.stopPropagation();
+            const realIndex = window.player.queueIndex + 1 + i;
+            window.player.queue.splice(realIndex, 1);
+            this.renderQueue();
+            window.showToast(`Removed from queue`);
+          };
+        }
+
         this.queueList.appendChild(item);
       });
     }
 
     // Autoplay recommendations
     this.queueAutoplayList.innerHTML = '';
-    window.player.autoplayTracks.slice(0, 8).forEach(t => {
-      const item = document.createElement('div');
-      item.className = 'queue-track-item';
-      item.innerHTML = `
-        <img src="${t.thumbnail}" alt="${t.title}" onerror="this.onerror=null; this.src='assets/default_cover.png';">
-        <div class="queue-track-info">
-          <div class="queue-track-title">${t.title}</div>
-          <div class="queue-track-artist">${t.artist}</div>
+    const autoplayList = (window.player.autoplayTracks || []).slice(0, 8);
+    if (autoplayList.length === 0) {
+      this.queueAutoplayList.innerHTML = `
+        <div style="color:var(--text-muted); font-size:12px; padding: 12px 6px; text-align:center;">
+          Recommendations appear when audio streams
         </div>
       `;
-      item.onclick = () => window.player.playTrack(t);
-      this.queueAutoplayList.appendChild(item);
-    });
+    } else {
+      autoplayList.forEach(t => {
+        const item = document.createElement('div');
+        item.className = 'queue-track-item';
+        item.innerHTML = `
+          <img src="${t.thumbnail}" alt="${t.title}" onerror="this.onerror=null; this.src='assets/default_cover.png';" loading="lazy">
+          <div class="queue-track-info">
+            <div class="queue-track-title" title="${t.title}">${t.title}</div>
+            <div class="queue-track-artist" title="${t.artist}">${t.artist}</div>
+          </div>
+          <div class="queue-item-actions">
+            <button class="btn-queue-action btn-queue-add" title="Add to Queue">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            </button>
+          </div>
+        `;
+
+        item.onclick = (e) => {
+          if (e.target.closest('.btn-queue-add')) return;
+          window.player.playTrack(t);
+        };
+
+        const addBtn = item.querySelector('.btn-queue-add');
+        if (addBtn) {
+          addBtn.onclick = (e) => {
+            e.stopPropagation();
+            window.player.queue.push(t);
+            this.renderQueue();
+            window.showToast(`Added to queue`);
+          };
+        }
+
+        this.queueAutoplayList.appendChild(item);
+      });
+    }
   }
 
   // --- Lyrics Subsystem ---
