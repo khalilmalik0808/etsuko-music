@@ -76,7 +76,11 @@ class EtsukoPlayer {
       if (this.currentTrack && !this.currentTrack._triedProxy) {
         this.currentTrack._triedProxy = true;
         this.audio.src = `/api/proxy_stream/${this.currentTrack.videoId}`;
-        this.audio.play().catch(() => {});
+        this.audio.play().catch(() => {
+          this.handlePlaybackFailure();
+        });
+      } else {
+        this.handlePlaybackFailure();
       }
     });
   }
@@ -384,8 +388,24 @@ class EtsukoPlayer {
     } catch (e) {
       console.warn('[Etsuko] Stream playback failed directly, attempting proxy fallback...', e);
       this.audio.src = `/api/proxy_stream/${track.videoId}`;
-      this.audio.play().catch(err => console.error('[Etsuko] Play failed completely:', err));
+      this.audio.play().catch(err => {
+        console.error('[Etsuko] Play failed completely:', err);
+        this.handlePlaybackFailure();
+      });
     }
+  }
+
+  handlePlaybackFailure() {
+    this.showSpinner(false);
+    const title = this.currentTrack ? this.currentTrack.title : 'this track';
+    if (window.showToast) {
+      window.showToast(`Unable to stream "${title}". Skipping to next song...`);
+    }
+    setTimeout(() => {
+      if (this.queue && this.queue.length > 1) {
+        this.next();
+      }
+    }, 1500);
   }
 
   async fetchAutoplayRadio(videoId) {

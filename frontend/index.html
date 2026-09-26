@@ -297,10 +297,18 @@
               </svg>
               <span>Play All</span>
             </button>
+            <button class="btn-figma-secondary" id="btn-clear-playlist" title="Clear all tracks in this collection">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              <span>Clear All</span>
+            </button>
             <button class="btn-figma-danger" id="btn-delete-playlist" style="display:none;" title="Delete this Playlist">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
               <span>Delete Crate</span>
             </button>
+            <div class="playlist-filter-box">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <input type="text" id="playlist-filter-input" placeholder="Find in this collection..." autocomplete="off">
+            </div>
           </div>
 
           <div class="tracks-table-header">

@@ -24,8 +24,8 @@ BaseRequest.MEMFILE_MAX = 50 * 1024 * 1024
 app = Bottle()
 
 # In-memory cache for stream URLs to keep playback snappy
+CACHE_EXPIRY = 1800  # 30 mins
 STREAM_CACHE = {}
-CACHE_EXPIRY = 3600  # 1 hour
 
 APP_VERSION = "69.1"
 UPDATE_BEACON_URL = "https://raw.githubusercontent.com/khalilmalik0808/etsuko-music/main/version.json"
@@ -48,9 +48,9 @@ def get_yt_dlp_opts():
     opts['js_runtimes'] = {'node': {}}
     return opts
 
-def resolve_audio_stream(video_id):
+def resolve_audio_stream(video_id, force=False):
     now = time.time()
-    if video_id in STREAM_CACHE:
+    if not force and video_id in STREAM_CACHE:
         url, exp = STREAM_CACHE[video_id]
         if now < exp:
             return url
@@ -279,7 +279,21 @@ def proxy_audio_stream(video_id):
         req.add_header('Range', range_header)
 
     try:
-        upstream = urllib.request.urlopen(req, timeout=15)
+        try:
+            upstream = urllib.request.urlopen(req, timeout=15)
+        except urllib.error.HTTPError as he:
+            if he.code in (403, 410):
+                print(f"[Etsuko] Stream token expired ({he.code}) for {video_id}, re-resolving fresh stream...")
+                stream_url = resolve_audio_stream(video_id, force=True)
+                if not stream_url:
+                    return HTTPResponse(status=404, body="Stream not found")
+                req = urllib.request.Request(stream_url)
+                req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+                if range_header:
+                    req.add_header('Range', range_header)
+                upstream = urllib.request.urlopen(req, timeout=15)
+            else:
+                raise
         status_code = upstream.status
         content_type = upstream.headers.get('Content-Type', 'audio/webm')
         content_range = upstream.headers.get('Content-Range')
@@ -396,6 +410,20 @@ def unlike_track():
 @app.route('/api/library/likes', method=['GET'])
 def get_likes():
     return {"tracks": db.get_liked_songs()}
+
+@app.route('/api/library/likes/clear', method=['POST', 'OPTIONS'])
+def clear_all_likes():
+    if request.method == 'OPTIONS':
+        return {}
+    db.clear_liked_songs()
+    return {"success": True}
+
+@app.route('/api/library/playlist/<playlist_id:int>/clear', method=['POST', 'OPTIONS'])
+def clear_single_playlist(playlist_id):
+    if request.method == 'OPTIONS':
+        return {}
+    db.clear_playlist_tracks(playlist_id)
+    return {"success": True}
 
 @app.route('/api/library/playlists', method=['GET', 'POST', 'OPTIONS'])
 def handle_playlists():

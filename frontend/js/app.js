@@ -83,7 +83,10 @@ class EtsukoApp {
     this.playlistHeaderDesc = document.getElementById('playlist-header-desc');
     this.playlistHeaderMeta = document.getElementById('playlist-header-meta');
     this.btnPlaylistPlayall = document.getElementById('btn-playlist-playall');
+    this.btnClearPlaylist = document.getElementById('btn-clear-playlist');
     this.btnDeletePlaylist = document.getElementById('btn-delete-playlist');
+    this.playlistFilterInput = document.getElementById('playlist-filter-input');
+    this.currentPlaylistTracks = [];
 
     // Queue Drawer
     this.queueDrawer = document.getElementById('queue-drawer');
@@ -1160,33 +1163,87 @@ class EtsukoApp {
 
   openPlaylistView(playlistId, title, desc, tracks) {
     this.activePlaylistId = playlistId;
+    this.currentPlaylistTracks = tracks || [];
     this.playlistHeaderTitle.textContent = title;
     this.playlistHeaderDesc.textContent = desc;
-    this.playlistHeaderMeta.textContent = `${tracks.length} tracks`;
+    this.playlistHeaderMeta.textContent = `${this.currentPlaylistTracks.length} tracks`;
     this.playlistTracksList.innerHTML = '';
 
-    // Show delete button only if it's a custom playlist (not Liked Tracks)
+    if (this.playlistFilterInput) {
+      this.playlistFilterInput.value = '';
+    }
+
+    // Show delete button only for custom playlists
     if (this.btnDeletePlaylist) {
       this.btnDeletePlaylist.style.display = playlistId ? 'inline-flex' : 'none';
     }
 
-    if (tracks.length === 0) {
-      this.playlistTracksList.innerHTML = `
-        <div style="padding: 40px 16px; text-align: center; color: var(--text-sub);">
-          <p style="font-size: 15px; color: #fff; margin-bottom: 6px;">This crate is empty.</p>
-          <p style="font-size: 13px;">Search tracks and click "+" to add songs to your crate!</p>
-        </div>
-      `;
-    } else {
-      tracks.forEach((track, idx) => {
-        const row = this.createTrackRow(track, idx + 1, tracks, true, playlistId);
-        this.playlistTracksList.appendChild(row);
-      });
+    // Show clear all button if playlist has tracks
+    if (this.btnClearPlaylist) {
+      this.btnClearPlaylist.style.display = this.currentPlaylistTracks.length > 0 ? 'inline-flex' : 'none';
+    }
+
+    const renderFiltered = (list) => {
+      this.playlistTracksList.innerHTML = '';
+      if (list.length === 0) {
+        this.playlistTracksList.innerHTML = `
+          <div style="padding: 40px 16px; text-align: center; color: var(--text-sub);">
+            <p style="font-size: 15px; color: #fff; margin-bottom: 6px;">${this.currentPlaylistTracks.length === 0 ? 'This collection is empty.' : 'No matching tracks found.'}</p>
+            <p style="font-size: 13px;">${this.currentPlaylistTracks.length === 0 ? 'Add songs by clicking the heart or "+" button!' : 'Try a different search query.'}</p>
+          </div>
+        `;
+      } else {
+        list.forEach((track, idx) => {
+          const row = this.createTrackRow(track, idx + 1, list, true, playlistId);
+          this.playlistTracksList.appendChild(row);
+        });
+      }
+    };
+
+    renderFiltered(this.currentPlaylistTracks);
+
+    if (this.playlistFilterInput) {
+      this.playlistFilterInput.oninput = (e) => {
+        const query = e.target.value.toLowerCase().trim();
+        if (!query) {
+          renderFiltered(this.currentPlaylistTracks);
+          return;
+        }
+        const filtered = this.currentPlaylistTracks.filter(t => 
+          (t.title && t.title.toLowerCase().includes(query)) ||
+          (t.artist && t.artist.toLowerCase().includes(query)) ||
+          (t.album && t.album.toLowerCase().includes(query))
+        );
+        renderFiltered(filtered);
+      };
+    }
+
+    if (this.btnClearPlaylist) {
+      this.btnClearPlaylist.onclick = async () => {
+        if (this.currentPlaylistTracks.length === 0) return;
+        if (!confirm('Clear all tracks from this collection?')) return;
+        try {
+          if (playlistId) {
+            await fetch(`/api/library/playlist/${playlistId}/clear`, { method: 'POST' });
+          } else {
+            await fetch('/api/library/likes/clear', { method: 'POST' });
+            if (this.likedCountBadge) this.likedCountBadge.textContent = '0 tracks saved';
+          }
+          this.currentPlaylistTracks = [];
+          this.playlistHeaderMeta.textContent = '0 tracks';
+          if (this.btnClearPlaylist) this.btnClearPlaylist.style.display = 'none';
+          renderFiltered([]);
+          this.loadLibrary();
+          window.showToast('All tracks cleared');
+        } catch (e) {
+          console.error('Failed to clear tracks:', e);
+        }
+      };
     }
 
     this.btnPlaylistPlayall.onclick = () => {
-      if (tracks.length > 0) {
-        window.player.playTrack(tracks[0], tracks);
+      if (this.currentPlaylistTracks.length > 0) {
+        window.player.playTrack(this.currentPlaylistTracks[0], this.currentPlaylistTracks);
       }
     };
 

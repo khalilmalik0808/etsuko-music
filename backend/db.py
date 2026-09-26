@@ -123,6 +123,22 @@ def remove_like(video_id):
     conn.close()
     return True
 
+def clear_liked_songs():
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("DELETE FROM liked_songs")
+    conn.commit()
+    conn.close()
+    return True
+
+def clear_playlist_tracks(playlist_id):
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("DELETE FROM playlist_tracks WHERE playlist_id = ?", (playlist_id,))
+    conn.commit()
+    conn.close()
+    return True
+
 def get_liked_songs():
     conn = get_connection()
     c = conn.cursor()
