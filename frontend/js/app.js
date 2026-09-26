@@ -58,6 +58,15 @@ class EtsukoApp {
     this.btnUpdateDismiss = document.getElementById('btn-update-dismiss');
     this.btnCheckUpdateManual = document.getElementById('btn-check-update-manual');
     this.latestUpdateData = null;
+    this.updatePollTimer = null;
+    this.modalUpdateProgress = document.getElementById('modal-update-progress');
+    this.updateModalTitle = document.getElementById('update-modal-title');
+    this.updateModalStatus = document.getElementById('update-modal-status');
+    this.updateProgressFill = document.getElementById('update-progress-fill');
+    this.updateStatPercent = document.getElementById('update-stat-percent');
+    this.updateStatSize = document.getElementById('update-stat-size');
+    this.updateStatSpeed = document.getElementById('update-stat-speed');
+    this.btnCancelUpdate = document.getElementById('btn-cancel-update');
     this.quickVibesGrid = document.getElementById('quick-vibes-grid');
     this.artistsCards = document.getElementById('artists-cards');
     this.topbarWavePill = document.getElementById('topbar-wave-pill');
@@ -552,6 +561,18 @@ class EtsukoApp {
     if (this.btnCheckUpdateManual) {
       this.btnCheckUpdateManual.addEventListener('click', () => this.checkForUpdates(true));
     }
+
+    if (this.btnCancelUpdate) {
+      this.btnCancelUpdate.addEventListener('click', async () => {
+        try {
+          await fetch('/api/update/cancel', { method: 'POST' });
+        } catch (e) {}
+        clearInterval(this.updatePollTimer);
+        if (this.modalUpdateProgress) this.modalUpdateProgress.style.display = 'none';
+        if (this.btnUpdateNow) this.btnUpdateNow.disabled = false;
+        if (this.btnUpdateNowText) this.btnUpdateNowText.textContent = 'Auto Update';
+      });
+    }
   }
 
   // --- Auto-Update Engine ---
@@ -589,9 +610,20 @@ class EtsukoApp {
 
   async installUpdate() {
     if (!this.latestUpdateData || !this.latestUpdateData.downloadUrl) return;
-    if (this.btnUpdateNowText) this.btnUpdateNowText.textContent = 'Downloading (24 MB)...';
+
+    // Open Progress Modal
+    if (this.modalUpdateProgress) {
+      this.modalUpdateProgress.style.display = 'flex';
+      if (this.updateModalTitle) this.updateModalTitle.textContent = `DOWNLOADING UPDATE // v${this.latestUpdateData.latestVersion || '69.2'}`;
+      if (this.updateModalStatus) this.updateModalStatus.textContent = 'Connecting to download cluster...';
+      if (this.updateProgressFill) this.updateProgressFill.style.width = '0%';
+      if (this.updateStatPercent) this.updateStatPercent.textContent = '0.0%';
+      if (this.updateStatSize) this.updateStatSize.textContent = '0.0 / 24.2 MB';
+      if (this.updateStatSpeed) this.updateStatSpeed.textContent = '0.0 MB/s';
+      if (this.btnCancelUpdate) this.btnCancelUpdate.style.display = 'inline-block';
+    }
+
     if (this.btnUpdateNow) this.btnUpdateNow.disabled = true;
-    if (window.showToast) window.showToast('Downloading update installer (~24MB)... Please wait a few seconds.');
 
     try {
       const res = await fetch('/api/update/install', {
@@ -600,17 +632,52 @@ class EtsukoApp {
         body: JSON.stringify({ downloadUrl: this.latestUpdateData.downloadUrl })
       });
       const data = await res.json();
-      if (data.success) {
-        if (this.btnUpdateNowText) this.btnUpdateNowText.textContent = 'Installing...';
-        if (window.showToast) window.showToast('Installing update... Etsuko will restart in a moment.');
-      } else {
-        if (window.showToast) window.showToast('Update download failed: ' + (data.error || 'Unknown error'));
-        if (this.btnUpdateNowText) this.btnUpdateNowText.textContent = 'Update Now';
+      if (!data.success) {
+        if (window.showToast) window.showToast('Update start failed: ' + (data.error || 'Unknown error'));
+        if (this.modalUpdateProgress) this.modalUpdateProgress.style.display = 'none';
         if (this.btnUpdateNow) this.btnUpdateNow.disabled = false;
+        return;
       }
+
+      // Poll progress every 200ms
+      clearInterval(this.updatePollTimer);
+      this.updatePollTimer = setInterval(async () => {
+        try {
+          const sRes = await fetch('/api/update/status');
+          const status = await sRes.json();
+          
+          if (status.status === 'downloading') {
+            const pct = Math.min(100, Math.max(0, status.percent || 0));
+            const dlMb = ((status.downloaded_bytes || 0) / (1024 * 1024)).toFixed(1);
+            const totMb = status.total_bytes > 0 ? (status.total_bytes / (1024 * 1024)).toFixed(1) : '24.2';
+            const speed = (status.speed_mbps || 0).toFixed(1);
+
+            if (this.updateProgressFill) this.updateProgressFill.style.width = `${pct}%`;
+            if (this.updateStatPercent) this.updateStatPercent.textContent = `${pct.toFixed(1)}%`;
+            if (this.updateStatSize) this.updateStatSize.textContent = `${dlMb} / ${totMb} MB`;
+            if (this.updateStatSpeed) this.updateStatSpeed.textContent = `${speed} MB/s`;
+            if (this.updateModalStatus) this.updateModalStatus.textContent = `Streaming payload chunks (${pct.toFixed(0)}%)...`;
+          } else if (status.status === 'installing') {
+            clearInterval(this.updatePollTimer);
+            if (this.updateProgressFill) this.updateProgressFill.style.width = '100%';
+            if (this.updateStatPercent) this.updateStatPercent.textContent = '100%';
+            if (this.updateModalStatus) this.updateModalStatus.textContent = 'LAUNCHING INSTALLER & RESTARTING ETSUKO NOW...';
+            if (this.btnCancelUpdate) this.btnCancelUpdate.style.display = 'none';
+          } else if (status.status === 'error') {
+            clearInterval(this.updatePollTimer);
+            if (window.showToast) window.showToast('Update error: ' + (status.error || 'Failed'));
+            if (this.modalUpdateProgress) this.modalUpdateProgress.style.display = 'none';
+            if (this.btnUpdateNow) this.btnUpdateNow.disabled = false;
+          }
+        } catch (err) {
+          // If server connection is severed, the app is shutting down to boot the installer
+          if (this.updateModalStatus) this.updateModalStatus.textContent = 'INSTALLING UPDATE & REBOOTING...';
+        }
+      }, 200);
+
     } catch (e) {
       if (window.showToast) window.showToast('Update failed: ' + e.message);
-      if (this.btnUpdateNowText) this.btnUpdateNowText.textContent = 'Update Now';
+      if (this.modalUpdateProgress) this.modalUpdateProgress.style.display = 'none';
       if (this.btnUpdateNow) this.btnUpdateNow.disabled = false;
     }
   }

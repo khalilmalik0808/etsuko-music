@@ -529,6 +529,42 @@
         <button class="btn-figma-primary" id="btn-modal-profile-save">Save Profile</button>
       </div>
     </div>
+  <!-- Cyber Auto-Update Progress Modal -->
+  <div class="modal-backdrop" id="modal-update-progress" style="display:none;">
+    <div class="modal-box update-modal-box">
+      <div class="modal-header">
+        <div class="update-modal-header-left">
+          <span class="live-dot pulse"></span>
+          <h3 id="update-modal-title">DOWNLOADING UPDATE // v69.2</h3>
+        </div>
+        <span class="modal-badge">OTA MATRIX</span>
+      </div>
+
+      <p class="update-modal-sub" id="update-modal-status">Connecting to global release server...</p>
+
+      <div class="update-progress-track">
+        <div class="update-progress-fill" id="update-progress-fill" style="width: 0%;"></div>
+      </div>
+
+      <div class="update-stats-grid">
+        <div class="update-stat-item">
+          <span class="stat-label">PROGRESS</span>
+          <span class="stat-value cyan" id="update-stat-percent">0.0%</span>
+        </div>
+        <div class="update-stat-item">
+          <span class="stat-label">PAYLOAD</span>
+          <span class="stat-value" id="update-stat-size">0.0 / 24.2 MB</span>
+        </div>
+        <div class="update-stat-item">
+          <span class="stat-label">SPEED</span>
+          <span class="stat-value" id="update-stat-speed">0.0 MB/s</span>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="margin-top: 18px;">
+        <button class="btn-figma-secondary" id="btn-cancel-update">Cancel</button>
+      </div>
+    </div>
   </div>
 
   <!-- Toast Notification -->

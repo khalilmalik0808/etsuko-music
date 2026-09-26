@@ -582,8 +582,32 @@ def check_for_updates():
     except Exception as e:
         return {"updateAvailable": False, "currentVersion": APP_VERSION, "error": str(e)}
 
+UPDATE_STATE = {
+    "status": "idle",
+    "percent": 0.0,
+    "downloaded_bytes": 0,
+    "total_bytes": 0,
+    "speed_mbps": 0.0,
+    "error": None
+}
+UPDATE_CANCEL_FLAG = False
+
+@app.route('/api/update/status', method=['GET'])
+def get_update_status():
+    return UPDATE_STATE
+
+@app.route('/api/update/cancel', method=['POST', 'OPTIONS'])
+def cancel_update():
+    global UPDATE_CANCEL_FLAG
+    if request.method == 'OPTIONS':
+        return {}
+    UPDATE_CANCEL_FLAG = True
+    UPDATE_STATE["status"] = "idle"
+    return {"success": True}
+
 @app.route('/api/update/install', method=['POST', 'OPTIONS'])
 def perform_update():
+    global UPDATE_CANCEL_FLAG
     if request.method == 'OPTIONS':
         return {}
     try:
@@ -592,32 +616,98 @@ def perform_update():
         if not download_url:
             return HTTPResponse(status=400, body=json.dumps({"error": "No download URL provided"}))
 
-        import tempfile, subprocess
-        temp_dir = tempfile.gettempdir()
-        dest_exe = os.path.join(temp_dir, "Etsuko_Update_Setup.exe")
+        if UPDATE_STATE["status"] == "downloading":
+            return {"success": True, "message": "Already downloading"}
 
-        req = urllib.request.Request(download_url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=120) as response, open(dest_exe, 'wb') as out_file:
-            out_file.write(response.read())
+        UPDATE_CANCEL_FLAG = False
+        UPDATE_STATE["status"] = "downloading"
+        UPDATE_STATE["percent"] = 0.0
+        UPDATE_STATE["downloaded_bytes"] = 0
+        UPDATE_STATE["total_bytes"] = 0
+        UPDATE_STATE["speed_mbps"] = 0.0
+        UPDATE_STATE["error"] = None
 
-        def launch_and_exit():
-            time.sleep(1.0)
-            DETACHED_PROCESS = 0x00000008
-            CREATE_NEW_PROCESS_GROUP = 0x00000200
+        def download_and_install():
+            global UPDATE_CANCEL_FLAG
+            import tempfile, subprocess
             try:
-                subprocess.Popen(
-                    [dest_exe, '/SILENT', '/CLOSEAPPLICATIONS', '/FORCECLOSEAPPLICATIONS'],
-                    creationflags=DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP,
-                    close_fds=True
-                )
-            except Exception:
-                subprocess.Popen([dest_exe, '/SILENT', '/CLOSEAPPLICATIONS', '/FORCECLOSEAPPLICATIONS'])
-            time.sleep(0.5)
-            os._exit(0)
+                temp_dir = tempfile.gettempdir()
+                dest_exe = os.path.join(temp_dir, "Etsuko_Update_Setup.exe")
+                
+                req = urllib.request.Request(download_url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+                with urllib.request.urlopen(req, timeout=60) as response, open(dest_exe, 'wb') as out_file:
+                    total_bytes = int(response.headers.get('Content-Length', 0))
+                    UPDATE_STATE["total_bytes"] = total_bytes
+                    downloaded = 0
+                    start_time = time.time()
+                    last_calc_time = start_time
+                    last_calc_bytes = 0
 
-        threading.Thread(target=launch_and_exit, daemon=True).start()
-        return {"success": True, "message": "Installer launched, updating..."}
+                    chunk_size = 64 * 1024
+                    while True:
+                        if UPDATE_CANCEL_FLAG:
+                            UPDATE_STATE["status"] = "idle"
+                            return
+                        chunk = response.read(chunk_size)
+                        if not chunk:
+                            break
+                        out_file.write(chunk)
+                        downloaded += len(chunk)
+                        UPDATE_STATE["downloaded_bytes"] = downloaded
+                        
+                        now = time.time()
+                        if total_bytes > 0:
+                            UPDATE_STATE["percent"] = round((downloaded / total_bytes) * 100, 1)
+                        
+                        if now - last_calc_time >= 0.25:
+                            elapsed = now - last_calc_time
+                            bytes_diff = downloaded - last_calc_bytes
+                            speed_mb = (bytes_diff / (1024 * 1024)) / (elapsed if elapsed > 0 else 1)
+                            UPDATE_STATE["speed_mbps"] = round(speed_mb, 2)
+                            last_calc_time = now
+                            last_calc_bytes = downloaded
+
+                UPDATE_STATE["percent"] = 100.0
+                UPDATE_STATE["status"] = "installing"
+                time.sleep(0.5)
+
+                installed_dir = os.path.expandvars(r"%LOCALAPPDATA%\Programs\Etsuko")
+                target_exe = os.path.join(installed_dir, "etsuko.exe")
+                bat_path = os.path.join(temp_dir, "etsuko_updater.bat")
+                
+                bat_content = f"""@echo off
+timeout /t 1 /nobreak >nul
+taskkill /F /IM etsuko.exe >nul 2>&1
+start "" /wait "{dest_exe}" /SILENT /CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS
+start "" "{target_exe}"
+del "%~f0"
+"""
+                with open(bat_path, "w", encoding="utf-8") as bf:
+                    bf.write(bat_content)
+
+                DETACHED_PROCESS = 0x00000008
+                CREATE_NEW_PROCESS_GROUP = 0x00000200
+                try:
+                    subprocess.Popen(
+                        ["cmd.exe", "/c", bat_path],
+                        creationflags=DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP,
+                        close_fds=True
+                    )
+                except Exception:
+                    subprocess.Popen(["cmd.exe", "/c", bat_path])
+
+                time.sleep(1.2)
+                os._exit(0)
+            except Exception as e:
+                print(f"[Etsuko] Update error: {e}")
+                UPDATE_STATE["status"] = "error"
+                UPDATE_STATE["error"] = str(e)
+
+        threading.Thread(target=download_and_install, daemon=True).start()
+        return {"success": True, "message": "Download started"}
     except Exception as e:
+        UPDATE_STATE["status"] = "error"
+        UPDATE_STATE["error"] = str(e)
         return HTTPResponse(status=500, body=json.dumps({"error": str(e)}))
 
 
